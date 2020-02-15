@@ -1,33 +1,23 @@
 'use strict'
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.createTable('channels', {
+    return queryInterface.createTable('tags', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      type: {
+      content: {
         allowNull: false,
         type: Sequelize.STRING
       },
-      uniqueKey: {
+      color: {
+        type: Sequelize.STRING(20)
+      },
+      creator: {
         allowNull: false,
-        field: 'unique_key',
-        unique: true,
-        type: Sequelize.STRING
-      },
-      title: {
-        allowNull: false,
-        type: Sequelize.STRING
-      },
-      configs: {
-        type: Sequelize.JSON
-      },
-      additionData: {
-        field: 'addition_data',
-        type: Sequelize.JSON
+        type: Sequelize.INTEGER
       },
       createdAt: {
         field: 'created_at',
@@ -42,6 +32,6 @@ module.exports = {
     })
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable('channels')
+    return queryInterface.dropTable('tags')
   }
 }

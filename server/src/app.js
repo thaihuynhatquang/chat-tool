@@ -8,6 +8,8 @@ import compression from 'compression'
 
 const app = express()
 
+require('dotenv').config()
+
 app.set('env', process.env.NODE_ENV || 'develop')
 app.use(helmet())
 app.use(compression())
@@ -22,5 +24,7 @@ app.use((err, req, res, next) => {
 
   res.sendStatus(err.status || 500)
 })
+
+app.get('/health', (req, res) => res.send('OK'))
 
 export default app

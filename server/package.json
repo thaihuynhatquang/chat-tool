@@ -1,19 +1,24 @@
 {
   "name": "chat-tool-server",
   "version": "1.0.0",
-  "description": "",
+  "description": "Chat management tool",
+  "repository": "https://github.com/thaihuynhatquang/chat-tool.git",
   "main": "app.js",
   "moduleRoots": [
     "./src"
   ],
   "scripts": {
-    "start": "DEBUG=*,-babel*,-nodemon*,-express*,-snapdragon* nodemon src/bin/www --exec 'node --require dotenv/config --require babel-register'",
+    "start": "yarn migrate && if-env NODE_ENV=production && yarn start:prod || yarn start:dev",
+    "start:dev": "yarn develop",
+    "start:prod": "yarn test && yarn lint && yarn flow && yarn build && yarn serve",
+    "develop": "DEBUG=*,-babel*,-nodemon*,-express*,-snapdragon* nodemon src/bin/www --exec 'node --require babel-register'",
+    "build": "babel src/ -d dist/",
+    "serve": "node dist/app.js",
     "migrate": "sequelize-cli db:migrate",
     "migrate:flush": "sequelize-cli db:migrate:undo:all",
     "seed": "sequelize-cli db:seed:all",
-    "build": "babel src/ -d dist/",
     "test": "jest",
-    "lint": "eslint app",
+    "lint": "eslint src",
     "flow": "flow"
   },
   "author": "thaihuynhatquang@gmail.com",
@@ -24,9 +29,10 @@
     "babel-preset-flow": "^6.23.0",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.3",
-    "dotenv": "^6.0.0",
+    "dotenv": "^8.2.0",
     "express": "^4.16.3",
     "helmet": "^3.21.2",
+    "if-env": "^1.0.4",
     "jest": "^25.1.0",
     "mysql2": "^2.1.0",
     "sequelize": "^4.38.0",
@@ -47,6 +53,7 @@
     "eslint-plugin-standard": "^3.1.0",
     "nodemon": "^1.18.3",
     "prettier": "^1.19.1",
+    "prettier-standard": "^8.0.1",
     "regenerator-runtime": "^0.12.1"
   }
 }

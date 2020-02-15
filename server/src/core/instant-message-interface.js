@@ -7,7 +7,7 @@ class InstantMessage {
    * Initialize IM.
    * @param {Object} options Different with each IMs.
    */
-  constructor (options) {
+  constructor(options) {
     throw new Error('Empty implementation')
   }
 
@@ -29,6 +29,15 @@ class InstantMessage {
    */
   getMessages = (offsetMessage, limit) => {
     return []
+  }
+
+  /**
+   * Get thread unique key, from the message.
+   * @param {Object} message
+   * @return {string} The thread unique key, define which thread should this message belongs to.
+   */
+  getThreadKey = (message) => {
+    return null
   }
 
   /**

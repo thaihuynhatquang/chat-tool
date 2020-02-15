@@ -2,47 +2,25 @@
 module.exports = {
   up: (queryInterface, Sequelize) => {
     return queryInterface
-      .createTable('threads', {
+      .createTable('notes', {
         id: {
           allowNull: false,
           autoIncrement: true,
           primaryKey: true,
           type: Sequelize.INTEGER
         },
-        channelId: {
+        customerId: {
           allowNull: false,
-          field: 'channel_id',
+          field: 'customer_id',
           type: Sequelize.INTEGER
         },
-        uniqueKey: {
+        creator: {
           allowNull: false,
-          field: 'unique_key',
-          unique: true,
-          type: Sequelize.STRING
-        },
-        title: {
-          allowNull: false,
-          type: Sequelize.STRING
-        },
-        status: {
-          allowNull: false,
-          type: Sequelize.STRING
-        },
-        lastMsgContent: {
-          field: 'last_msg_content',
-          type: Sequelize.STRING
-        },
-        missCount: {
-          field: 'miss_count',
           type: Sequelize.INTEGER
         },
-        missTime: {
-          field: 'miss_time',
-          type: 'TIMESTAMP'
-        },
-        additionData: {
-          field: 'addition_data',
-          type: Sequelize.JSON
+        content: {
+          allowNull: false,
+          type: Sequelize.STRING
         },
         createdAt: {
           field: 'created_at',
@@ -56,12 +34,12 @@ module.exports = {
         }
       })
       .then(() =>
-        queryInterface.addIndex('threads', {
-          fields: ['channel_id']
+        queryInterface.addIndex('notes', {
+          fields: ['customer_id']
         })
       )
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable('threads')
+    return queryInterface.dropTable('notes')
   }
 }

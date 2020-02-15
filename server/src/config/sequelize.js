@@ -1,11 +1,18 @@
 require('dotenv').config()
+const Sequelize = require('sequelize')
 
 module.exports = {
-  username: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_DATABASE_NAME,
-  host: process.env.DB_HOST,
+  host: 'mysql',
+  username: process.env.MYSQL_USERNAME,
+  password: process.env.MYSQL_PASSWORD,
+  database: process.env.MYSQL_DATABASE,
   dialect: 'mysql',
   migrationStorageTableName: 'z_sequelize_migrations',
-  seederStorageTableName: 'z_sequelize_seeders'
+  seederStorageTableName: 'z_sequelize_seeders',
+  operatorsAliases: Sequelize.Op,
+  logging: false,
+  define: {
+    timestamps: true,
+    freezeTableName: true
+  }
 }
