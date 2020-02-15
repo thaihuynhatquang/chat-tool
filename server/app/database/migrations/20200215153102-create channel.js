@@ -1,15 +1,7 @@
-"use strict";
-
+'use strict'
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    /*
-      Add altering commands here.
-      Return a promise to correctly handle asynchronicity.
-
-      Example:
-      return queryInterface.createTable('users', { id: Sequelize.INTEGER });
-    */
-    return queryInterface.createTable("channels", {
+    return queryInterface.createTable('channels', {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -26,31 +18,23 @@ module.exports = {
       },
       privacy: {
         allowNull: false,
-        defaultValue: "public",
-        type: Sequelize.ENUM("public", "private")
+        defaultValue: 'public',
+        type: Sequelize.ENUM('public', 'private')
       },
       configs: {
         type: Sequelize.JSON
       },
       createdAt: {
-        field: "created_at",
+        field: 'created_at',
         type: Sequelize.INTEGER
       },
       updatedAt: {
-        field: "updated_at",
+        field: 'updated_at',
         type: Sequelize.INTEGER
       }
-    });
+    }).then(() => queryInterface.addIndex('channels', ['type']))
   },
-
   down: (queryInterface, Sequelize) => {
-    /*
-      Add reverting commands here.
-      Return a promise to correctly handle asynchronicity.
-
-      Example:
-      return queryInterface.dropTable('users');
-    */
-    return queryInterface.dropTable("channels");
+    return queryInterface.dropTable('channels')
   }
-};
+}

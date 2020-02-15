@@ -4,7 +4,7 @@
 class InstantMessage {
   /**
    * Initialize IM.
-   * @param {object} options Different with each IMs.
+   * @param {Object} options Different with each IMs.
    */
   constructor (options) {
     throw new Error('Empty implementation')
@@ -15,12 +15,13 @@ class InstantMessage {
    * @param  {Object} message
    * @return {Promise} Resolve value indicates if the message is successfully sent or not.
    */
-  sendMessage = async message => {
+  sendMessage = async (message) => {
     return false
   }
 
   /**
    * Get {limit} messages of thread, from a specific message {offsetMessage}.
+   * This function should be same among all IM instances.
    * @param  {Object} offsetMessage
    * @param  {Number} limit
    * @return {Array} Array of next {limit} messages after {offsetMessage} message.
@@ -34,7 +35,7 @@ class InstantMessage {
    * @param  {Object} message Different with each IMs.
    * @return {Object} Standardized message which can be understood by all IM instances and redundant-free.
    */
-  standardizedMessage = message => {
+  standardizedMessage = (message) => {
     throw new Error('Empty implementation')
   }
 
@@ -43,35 +44,35 @@ class InstantMessage {
    * @param  {Object}  message The message will be handled.
    * @return {Promise}
    */
-  preHandleMessage = async message => { }
+  preHandleMessage = async (message) => {}
 
   /**
    * Post-handle message. Can be empty.
    * @param  {Object}  message The message handled.
    * @return {Promise}
    */
-  postHandleMessage = async message => { }
+  postHandleMessage = async (message) => {}
 
   /**
    * Listen whenever new message is received.
+   * This function should be same among all IM instances.
    * @param  {Object} message Different with each IMs.
    * @return {Void}
    */
-  __onMessage = async message => {
+  onMessage = async (message) => {
     const standardizedMessage = this.standardizedMessage(message)
     await this.preHandleMessage(standardizedMessage)
-    await this.__handleMessage(standardizedMessage)
+    await this.handleMessage(standardizedMessage)
     await this.postHandleMessage(standardizedMessage)
   }
 
   /**
-   * Main handle message process. Should not be modified. Same logic for all IMs.
+   * Main handle message process.
+   * This function should be same among all IM instances.
    * @param  {Object}  message  The message will be handled.
    * @return {Promise}
    */
-  __handleMessage = async message => {
-
-  }
+  handleMessage = async (message) => {}
 }
 
 export default InstantMessage

@@ -6,6 +6,7 @@
   "scripts": {
     "start": "nodemon app/bin/www --exec babel-node",
     "migrate": "sequelize-cli db:migrate",
+    "migrate:flush": "sequelize db:migrate:undo:all",
     "build": "babel app/ -d dist/",
     "eslint-check": "eslint app"
   },
@@ -22,9 +23,12 @@
   "devDependencies": {
     "babel-cli": "^6.26.0",
     "babel-core": "^6.26.3",
+    "babel-eslint": "^8.2.6",
+    "babel-plugin-transform-class-properties": "^6.24.1",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-preset-env": "^1.7.0",
-    "eslint": "^5.3.0",
-    "eslint-config-standard": "^11.0.0",
+    "eslint": "^5.4.0",
+    "eslint-config-standard": "^12.0.0-alpha.0",
     "eslint-plugin-import": "^2.14.0",
     "eslint-plugin-node": "^7.0.1",
     "eslint-plugin-promise": "^3.8.0",
