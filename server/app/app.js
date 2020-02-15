@@ -1,11 +1,17 @@
 import express from 'express'
 import path from 'path'
 import cookieParser from 'cookie-parser'
+import dotenv from 'dotenv'
+import helmet from 'helmet'
+import compression from 'compression'
 
-require('dotenv').config()
+dotenv.config()
 
 const app = express()
 
+app.set('env', process.env.NODE_ENV)
+app.use(helmet())
+app.use(compression())
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 app.use(cookieParser())
