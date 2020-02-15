@@ -17,11 +17,24 @@ module.exports = {
         uniqueKey: {
           allowNull: false,
           field: 'unique_key',
+          unique: true,
+          type: Sequelize.STRING
+        },
+        title: {
+          allowNull: false,
           type: Sequelize.STRING
         },
         status: {
           allowNull: false,
           type: Sequelize.STRING
+        },
+        unread: {
+          allowNull: false,
+          type: Sequelize.INTEGER
+        },
+        lastMsgId: {
+          field: 'last_msg_id',
+          type: Sequelize.INTEGER
         },
         additionData: {
           field: 'addition_data',
@@ -29,18 +42,18 @@ module.exports = {
         },
         createdAt: {
           field: 'created_at',
-          type: Sequelize.INTEGER
+          type: 'TIMESTAMP',
+          defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
         },
         updatedAt: {
           field: 'updated_at',
-          type: Sequelize.INTEGER
+          type: 'TIMESTAMP',
+          defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
         }
       })
-      .then(() => queryInterface.addIndex('threads', ['channel_id']))
       .then(() =>
         queryInterface.addIndex('threads', {
-          fields: ['unique_key'],
-          unique: true
+          fields: ['channel_id']
         })
       )
   },

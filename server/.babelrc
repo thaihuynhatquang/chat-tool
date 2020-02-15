@@ -1,7 +1,15 @@
 {
-  "presets": ["env"],
+  "presets": ["env", "flow"],
   "plugins": [
     "transform-class-properties",
-    "transform-object-rest-spread"
+    "transform-object-rest-spread",
+    ["module-resolver", {
+        "alias": {
+          "src": "./src",
+          "config": "./src/config",
+          "core": "./src/core",
+          "models": "./src/models"
+        }
+    }]
   ]
 }

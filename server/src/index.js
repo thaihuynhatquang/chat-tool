@@ -1,15 +1,14 @@
+// @flow
+import 'babel-polyfill'
 import express from 'express'
 import path from 'path'
 import cookieParser from 'cookie-parser'
-import dotenv from 'dotenv'
 import helmet from 'helmet'
 import compression from 'compression'
 
-dotenv.config()
-
 const app = express()
 
-app.set('env', process.env.NODE_ENV)
+app.set('env', process.env.NODE_ENV || 'develop')
 app.use(helmet())
 app.use(compression())
 app.use(express.json())
