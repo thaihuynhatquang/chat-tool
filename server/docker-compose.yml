@@ -10,6 +10,7 @@ services:
     depends_on:
       - mysql
       - redis
+    command: ./wait-for-it.sh mysql:3306 -- yarn start
     ports:
       - '3000:3000'
     volumes:
