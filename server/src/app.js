@@ -5,6 +5,7 @@ import path from 'path'
 import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
 import compression from 'compression'
+import routers from 'routes'
 
 const app = express()
 
@@ -16,6 +17,7 @@ app.use(compression())
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 app.use(cookieParser())
+app.use(routers)
 app.use(express.static(path.join(__dirname, '../../public')))
 
 app.use((err, req, res, next) => {
@@ -25,6 +27,6 @@ app.use((err, req, res, next) => {
   res.sendStatus(err.status || 500)
 })
 
-app.get('/health', (req, res) => res.send('OK'))
+app.get('/', (req, res) => res.send('OK'))
 
 export default app

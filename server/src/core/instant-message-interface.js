@@ -1,4 +1,3 @@
-// @flow
 /**
  * InstantMessage interface. Other IMs should extend this class.
  */
