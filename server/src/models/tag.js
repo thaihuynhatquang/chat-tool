@@ -32,7 +32,7 @@ module.exports = (sequelize, DataTypes) => {
 
   Tag.associate = function(models) {
     models.Tag.belongsToMany(models.Customer, {
-      through: 'customer_tag'
+      through: 'CustomerTag'
     })
     models.Tag.belongsTo(models.User, {
       foreignKey: 'creator'

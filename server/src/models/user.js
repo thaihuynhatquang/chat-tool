@@ -60,12 +60,12 @@ module.exports = (sequelize, DataTypes) => {
       through: 'channel_user'
     })
     models.User.belongsToMany(models.Thread, {
-      as: 'usersServing',
+      as: 'threadsServing',
       through: 'thread_user_serving',
       updatedAt: false
     })
     models.User.belongsToMany(models.Thread, {
-      as: 'usersHistory',
+      as: 'threadsHistory',
       through: 'thread_user_history'
     })
   }

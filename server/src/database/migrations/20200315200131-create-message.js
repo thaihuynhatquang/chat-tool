@@ -18,6 +18,11 @@ module.exports = {
         field: 'customer_id',
         type: Sequelize.INTEGER
       },
+      isVerified: {
+        field: 'is_verified',
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
+      },
       userId: {
         field: 'user_id',
         type: Sequelize.INTEGER

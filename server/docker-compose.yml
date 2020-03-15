@@ -9,6 +9,7 @@ services:
     env_file: .env
     depends_on:
       - mysql
+      - redis
     command: ./wait-for-it.sh mysql:3306 -- yarn start
     ports:
       - '3000:3000'
@@ -28,3 +29,10 @@ services:
     restart: always
     volumes:
       - ./data/mysql:/var/lib/mysql
+
+  redis:
+    image: 'redis'
+    ports:
+      - '2706:6379'
+    volumes:
+      - ./data/redis:/data

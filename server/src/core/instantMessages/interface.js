@@ -33,6 +33,7 @@ class InstantMessage {
    * { mid: string,
    *   threadId: int,
    *   cusomerId: int,
+   *   isVerified: boolean
    *   userId?: int,
    *   parentId?: string,
    *   content: text,
@@ -55,10 +56,10 @@ class InstantMessage {
     debug('Receive message:\n', JSON.stringify(message, null, 2))
     const customerPromise = this.getOrCreateCustomerByMsg(message)
     const threadPromise = this.getOrCreateThreadByMsg(message)
-    const customer = await customerPromise
-    const thread = await threadPromise
+    const { customer } = await customerPromise
+    const { thread } = await threadPromises
     const formatedMessage = this.getFormattedMessage(message, thread, customer)
-    await models.Message.create(formatedMessage)
+    await Promise.all([thread.addCustomer(customer), models.Message.create(formatedMessage)])
   }
 
   /**

@@ -47,11 +47,12 @@ module.exports = (sequelize, DataTypes) => {
   )
 
   Customer.associate = function(models) {
+    models.Customer.hasMany(models.Note)
     models.Customer.belongsToMany(models.Thread, {
       through: 'customer_thread'
     })
     models.Customer.belongsToMany(models.Tag, {
-      through: 'customer_tag'
+      through: 'CustomerTag'
     })
     models.Customer.belongsTo(models.Channel)
   }

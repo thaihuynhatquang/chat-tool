@@ -23,6 +23,10 @@ module.exports = (sequelize, DataTypes) => {
         field: 'user_id',
         type: DataTypes.INTEGER
       },
+      isVerified: {
+        field: 'is_verified',
+        type: DataTypes.BOOLEAN
+      },
       parentId: {
         field: 'parent_id',
         type: DataTypes.STRING

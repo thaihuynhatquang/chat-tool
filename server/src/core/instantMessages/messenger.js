@@ -61,6 +61,7 @@ class Messenger extends InstantMessage {
   getFormattedMessage = (message: MessengerMessageType, thread: ThreadType, customer: CustomerType): MessageType => {
     const {
       message: { mid, text, attachments },
+      sender: { id: senderId },
       timestamp
     } = message
     const additionData = nullIfEmptyObj({
@@ -71,6 +72,7 @@ class Messenger extends InstantMessage {
       mid,
       threadId: thread.id,
       customerId: customer.id,
+      isVerified: senderId === this.channel.uniqueKey,
       content: text,
       additionData,
       msgCreatedAt,
@@ -86,28 +88,32 @@ class Messenger extends InstantMessage {
    */
   getOrCreateThreadByMsg = async (message: MessengerMessageType): ThreadType => {
     const {
-      sender: { id: uniqueKey },
-      message: { mid }
+      sender: { id: senderId },
+      recipient: { id: recipientId },
+      message: { mid, is_echo: isEcho }
     } = message
+    const uniqueKey = isEcho ? recipientId : senderId
     const thread = await Thread.findOne({
       where: { channelId: this.channel.id, uniqueKey }
     })
 
     if (thread) {
       await thread.update({ lastMsgId: mid })
-      return Thread.findOne({
+      const thr = await Thread.findOne({
         where: { channelId: this.channel.id, uniqueKey }
       })
+      return { thread: thr, isCreated: false }
     }
 
     const profile = await this.getUserProfile(uniqueKey)
-    return Thread.create({
+    const thr = await Thread.create({
       channelId: this.channel.id,
       uniqueKey,
       title: profile.name,
       status: THREAD_STATUS_UNREAD,
       lastMsgId: mid
     })
+    return { thread: thr, isCreated: true }
   }
 
   /**
@@ -123,17 +129,17 @@ class Messenger extends InstantMessage {
     const customer = await Customer.findOne({
       where: { channelId: this.channel.id, uniqueKey }
     })
-    if (customer) return customer
+    if (customer) return { customer, isCreated: false }
     const profile = await this.getUserProfile(uniqueKey)
-    return Customer.create({
+    const cus = await Customer.create({
       channelId: this.channel.id,
       uniqueKey,
       name: profile.name,
       additionData: {
-        avatarUrl: profile.profile_pic,
-        gender: profile.gender
+        avatarUrl: profile.profile_pic
       }
     })
+    return { customer: cus, isCreated: true }
   }
 
   /**
@@ -152,8 +158,15 @@ class Messenger extends InstantMessage {
    * @return {Object} Facebook profile from PSID.
    */
   getUserProfile = (userId: string) => {
-    const url = `https://graph.facebook.com/v3.2/${userId}?fields=name,first_name,last_name,profile_pic,locale,timezone,gender&access_token=${this.accessToken}`
-    return axios.get(url).then((res) => res.data)
+    const isChannel = userId === this.channel.uniqueKey
+    let query = '?fields=name,profile_pic'
+    if (isChannel) query = '/picture?width=720&redirect=0'
+    const url = `https://graph.facebook.com/v3.2/${userId}${query}&access_token=${this.accessToken}`
+    return axios.get(url).then((res) => {
+      let result = res.data
+      result = isChannel ? { name: this.channel.title, profile_pic: result.data.url } : result
+      return result
+    })
   }
 }
 

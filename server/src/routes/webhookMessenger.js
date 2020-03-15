@@ -4,8 +4,7 @@ import startChannels from 'core/startChannels'
 const router = new Router()
 
 router.get('/', (req, res) => {
-  console.log(process.env.VERIFY_TOKEN)
-  if (req.query['hub.mode'] === 'subscribe' && req.query['hub.verify_token'] === process.env.VERIFY_TOKEN) {
+  if (req.query['hub.mode'] === 'subscribe' && req.query['hub.verify_token'] === process.env.WEBHOOK_FB_VERIFY_TOKEN) {
     res.status(200).send(req.query['hub.challenge'])
   } else {
     res.sendStatus(403)

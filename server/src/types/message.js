@@ -10,6 +10,7 @@ export type MessageType = {
   mid: string,
   threadId: number,
   customerId: number,
+  isVerified: boolean,
   userId?: number,
   parentId?: string,
   content?: string,
