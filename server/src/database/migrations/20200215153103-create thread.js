@@ -38,7 +38,7 @@ module.exports = {
         },
         missTime: {
           field: 'miss_time',
-          type: Sequelize.DATE
+          type: 'TIMESTAMP'
         },
         additionData: {
           field: 'addition_data',

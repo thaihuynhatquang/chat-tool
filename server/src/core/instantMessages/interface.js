@@ -1,6 +1,7 @@
 // @flow
 import models from 'models'
 
+const debug = require('debug')('app:im:interface')
 /**
  * InstantMessage interface. Other IMs should extend this class.
  */
@@ -51,6 +52,7 @@ class InstantMessage {
    * @param  {Object} message Different with each IMs.
    */
   onMessage = async (message) => {
+    debug('Receive message:\n', JSON.stringify(message, null, 2))
     const customerPromise = this.getOrCreateCustomerByMsg(message)
     const threadPromise = this.getOrCreateThreadByMsg(message)
     const customer = await customerPromise

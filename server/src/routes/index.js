@@ -1,13 +1,11 @@
-// @flow
 import { Router } from 'express'
-import webhookFB from 'routes/webhookFB'
-import { loggingRequest } from 'routes/middlewares/logging'
+import webhook from 'routes/webhook'
 
 const router = new Router()
 
 router.get('/health', async (req, res) => {
   res.send('OK')
 })
-router.use('/webhook-fb', webhookFB)
+router.use('/webhook', webhook)
 
 export default router

@@ -1,8 +1,8 @@
 // @flow
-import Bootbot from 'bootbot'
-import InstantMessage from './interface'
 import models from 'models'
 import axios from 'axios'
+import InstantMessage from './interface'
+import Bootbot from 'bootbot'
 import { nullIfEmptyObj } from 'utils/common'
 import { formatTime } from 'utils/time'
 import { THREAD_STATUS_UNREAD } from 'constants'
@@ -13,7 +13,7 @@ import type { ThreadType } from 'types/thread'
 import type { CustomerType } from 'types/customer'
 
 const { Customer, Thread } = models
-const debug = require('debug')('IM:messenger')
+const debug = require('debug')('app:im:messenger')
 
 /**
  * Messenger Instant Message which listen and send message from messenger.
@@ -34,8 +34,8 @@ class Messenger extends InstantMessage {
   constructor(channel: MessengerChannelType, app: AppType) {
     super()
     debug(`Init messenger channel ${channel.title}`)
-    const {
-      configs: { accessToken, verifyToken, appSecret, webhook, broadcastEchoes }
+    let {
+      configs: { accessToken, verifyToken, appSecret, broadcastEchoes }
     } = channel
     if (!accessToken || !verifyToken || !appSecret) {
       throw new Error('Require accessToken, verifyToken, appSecret to create Messenger IM')
@@ -46,29 +46,7 @@ class Messenger extends InstantMessage {
       accessToken,
       verifyToken,
       appSecret,
-      webhook,
       broadcastEchoes
-    })
-    this.bot.app = app // Using app routes to listen webhook messages
-    this.bot._initWebhook()
-
-    // Listen to message and emit event for IM to handle
-    // Just support 2 types of event for now
-    this.bot.on('message', (payload) => {
-      debug(`Receive text message: ${payload.message.text}, at ${payload.timestamp}`)
-      this.onMessage({
-        ...payload,
-        type: 'message'
-      })
-    })
-    this.bot.on('attachment', (payload) => {
-      debug(
-        `Receive text attachments: ${payload.message.attachments.map((item) => item.type)}, at ${payload.timestamp}`
-      )
-      this.onMessage({
-        ...payload,
-        type: 'attachment'
-      })
     })
   }
 

@@ -7,11 +7,16 @@
   "moduleRoots": [
     "./src"
   ],
+  "nodemonConfig": {
+    "ignore": [
+      "/app/data/*"
+    ]
+  },
   "scripts": {
     "start": "yarn migrate && if-env NODE_ENV=production && yarn start:prod || yarn start:dev",
     "start:dev": "yarn develop",
     "start:prod": "yarn test && yarn lint && yarn flow && yarn build && yarn serve",
-    "develop": "DEBUG=*,-babel*,-nodemon*,-express*,-snapdragon* nodemon src/bin/www --exec 'node --require babel-register'",
+    "develop": "DEBUG=app:* nodemon src/bin/www --exec 'node --require babel-register'",
     "build": "babel src/ -d dist/",
     "serve": "node dist/app.js",
     "migrate": "sequelize-cli db:migrate",
@@ -36,6 +41,7 @@
     "helmet": "^3.21.2",
     "if-env": "^1.0.4",
     "jest": "^25.1.0",
+    "jsonwebtoken": "^8.5.1",
     "moment": "^2.24.0",
     "mysql2": "^2.1.0",
     "sequelize": "^4.38.0",

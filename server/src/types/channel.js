@@ -16,7 +16,6 @@ export type MessengerChannelType = ChannelType & {
     accessToken: string,
     verifyToken: string,
     appSecret: string,
-    webhook?: string,
     broadcastEchoes?: boolean
   }
 }
