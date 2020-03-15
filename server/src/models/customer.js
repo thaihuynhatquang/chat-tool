@@ -9,6 +9,12 @@ module.exports = (sequelize, DataTypes) => {
         primaryKey: true,
         type: DataTypes.INTEGER
       },
+      channelId: {
+        allowNull: false,
+        primaryKey: true,
+        field: 'channel_id',
+        type: DataTypes.INTEGER
+      },
       uniqueKey: {
         allowNull: false,
         field: 'unique_key',

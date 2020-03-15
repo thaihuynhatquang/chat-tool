@@ -28,8 +28,8 @@ module.exports = {
           allowNull: false,
           type: Sequelize.STRING
         },
-        lastMsgContent: {
-          field: 'last_msg_content',
+        lastMsgId: {
+          field: 'last_msg_id',
           type: Sequelize.STRING
         },
         missCount: {
@@ -38,7 +38,7 @@ module.exports = {
         },
         missTime: {
           field: 'miss_time',
-          type: 'TIMESTAMP'
+          type: Sequelize.DATE
         },
         additionData: {
           field: 'addition_data',

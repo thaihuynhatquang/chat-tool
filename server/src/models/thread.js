@@ -9,6 +9,11 @@ module.exports = (sequelize, DataTypes) => {
         primaryKey: true,
         type: DataTypes.INTEGER
       },
+      channelId: {
+        allowNull: false,
+        field: 'channel_id',
+        type: DataTypes.INTEGER
+      },
       uniqueKey: {
         allowNull: false,
         field: 'unique_key',
@@ -23,8 +28,8 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         type: DataTypes.STRING
       },
-      lastMsgContent: {
-        field: 'last_msg_content',
+      lastMsgId: {
+        field: 'last_msg_id',
         type: DataTypes.STRING
       },
       missCount: {
@@ -33,7 +38,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       missTime: {
         field: 'miss_time',
-        type: 'TIMESTAMP'
+        type: DataTypes.DATE
       },
       additionData: {
         field: 'addition_data',
@@ -59,9 +64,12 @@ module.exports = (sequelize, DataTypes) => {
       through: 'customer_thread'
     })
     models.Thread.belongsToMany(models.User, {
-      through: 'thread_user_serving'
+      as: 'threadServing',
+      through: 'thread_user_serving',
+      updatedAt: false
     })
     models.Thread.belongsToMany(models.User, {
+      as: 'threadHistory',
       through: 'thread_user_history'
     })
   }

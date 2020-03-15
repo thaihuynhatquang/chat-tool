@@ -4,8 +4,7 @@
 
 [libs]
 
-[lints]
-
 [options]
-module.name_mapper='^\(.*\)$' -> '<PROJECT_ROOT>/src/\1'
+module.system.node.resolve_dirname=src
+module.system.node.resolve_dirname=node_modules
 [strict]

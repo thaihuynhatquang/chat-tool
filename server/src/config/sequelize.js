@@ -1,4 +1,3 @@
-require('dotenv').config()
 const Sequelize = require('sequelize')
 
 module.exports = {
@@ -12,7 +11,10 @@ module.exports = {
   operatorsAliases: Sequelize.Op,
   logging: false,
   define: {
+    charset: 'utf8mb4',
+    collate: 'utf8mb4_bin',
     timestamps: true,
+    underscored: true,
     freezeTableName: true
   }
 }

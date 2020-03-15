@@ -1,6 +1,6 @@
 // @flow
 import { Router } from 'express'
-
+import asyncMiddleware from 'routes/middlewares/asyncMiddleware'
 const router = new Router()
 const request = require('request')
 
@@ -11,6 +11,24 @@ router.get('/', (req, res) => {
     res.sendStatus(403)
   }
 })
+
+// router.post('/', asyncMiddleware(async(req, res, next) => {
+//   // Parse the request body from the POST
+//   const data = req.body
+
+//   // Check the webhook event is from a Page subscription
+//   if (data.object !== 'page') return res.sendStatus(400)
+
+//   // Iterate over each entry. There may be multiple if batched.
+//   data.entry.forEach(entry => {
+//     const { id: pageId } = entry
+//     if(entry.messaging){
+//       entry.messaging.forEach(event => {
+//         event.pageId = pageId
+//       })
+//     }
+//   })
+// }))
 
 router.post('/', (req, res) => {
   // Parse the request body from the POST

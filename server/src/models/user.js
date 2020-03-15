@@ -23,7 +23,8 @@ module.exports = (sequelize, DataTypes) => {
       dob: {
         type: DataTypes.DATEONLY
       },
-      sso_id: {
+      ssoId: {
+        field: 'sso_id',
         type: DataTypes.STRING
       },
       avatarUrl: {
@@ -59,9 +60,12 @@ module.exports = (sequelize, DataTypes) => {
       through: 'channel_user'
     })
     models.User.belongsToMany(models.Thread, {
-      through: 'thread_user_serving'
+      as: 'usersServing',
+      through: 'thread_user_serving',
+      updatedAt: false
     })
     models.User.belongsToMany(models.Thread, {
+      as: 'usersHistory',
       through: 'thread_user_history'
     })
   }
