@@ -1,4 +1,3 @@
-// @flow
-import moment from 'moment'
+import moment from 'moment';
 
-export const formatTime = (time: any): string => moment(time).format('YYYY-MM-DD HH:mm:ss')
+export const formatTime = (time) => moment(time).format('YYYY-MM-DD HH:mm:ss');

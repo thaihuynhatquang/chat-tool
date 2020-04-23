@@ -1,7 +1,7 @@
 version: '3'
 
 services:
-  web:
+  server:
     build:
       context: .
       dockerfile: Dockerfile
@@ -10,9 +10,9 @@ services:
     depends_on:
       - mysql
       - redis
-    command: ./wait-for-it.sh mysql:3306 -- yarn start
+    command: ./wait-for-it.sh mysql:3306 -t 0 -- npm start
     ports:
-      - '3000:3000'
+      - '${APP_PORT}:${APP_PORT}'
     volumes:
       - .:/app
 

@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 module.exports = (sequelize, DataTypes) => {
   const LogRequest = sequelize.define(
     'LogRequest',
@@ -7,43 +7,43 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
-        type: DataTypes.INTEGER
+        type: DataTypes.INTEGER,
       },
       path: {
         allowNull: false,
-        type: DataTypes.STRING
+        type: DataTypes.STRING,
       },
       method: {
         allowNull: false,
-        type: DataTypes.STRING(20)
+        type: DataTypes.STRING(20),
       },
       params: {
-        type: DataTypes.JSON
+        type: DataTypes.JSON,
       },
       body: {
-        type: DataTypes.JSON
+        type: DataTypes.JSON,
       },
       elapsedTime: {
         field: 'elapsed_time',
-        type: DataTypes.INTEGER
+        type: DataTypes.INTEGER,
       },
       responseStatus: {
         field: 'response_status',
-        type: DataTypes.INTEGER
+        type: DataTypes.INTEGER,
       },
       createdAt: {
         field: 'created_at',
-        type: 'TIMESTAMP'
+        type: 'TIMESTAMP',
       },
       updatedAt: {
         field: 'updated_at',
-        type: 'TIMESTAMP'
-      }
+        type: 'TIMESTAMP',
+      },
     },
     {
-      tableName: 'log_requests'
-    }
-  )
+      tableName: 'log_requests',
+    },
+  );
 
-  return LogRequest
-}
+  return LogRequest;
+};

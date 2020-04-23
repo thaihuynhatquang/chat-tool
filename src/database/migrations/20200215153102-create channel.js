@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 module.exports = {
   up: (queryInterface, Sequelize) => {
     return queryInterface.createTable('channels', {
@@ -6,42 +6,43 @@ module.exports = {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
       },
       type: {
         allowNull: false,
-        type: Sequelize.STRING
+        unique: 'compositeIndex',
+        type: Sequelize.STRING,
       },
       uniqueKey: {
         allowNull: false,
         field: 'unique_key',
-        unique: true,
-        type: Sequelize.STRING
+        unique: 'compositeIndex',
+        type: Sequelize.STRING,
       },
       title: {
         allowNull: false,
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       configs: {
-        type: Sequelize.JSON
+        type: Sequelize.JSON,
       },
       additionData: {
         field: 'addition_data',
-        type: Sequelize.JSON
+        type: Sequelize.JSON,
       },
       createdAt: {
         field: 'created_at',
         type: 'TIMESTAMP',
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
       },
       updatedAt: {
         field: 'updated_at',
         type: 'TIMESTAMP',
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
-      }
-    })
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'),
+      },
+    });
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable('channels')
-  }
-}
+    return queryInterface.dropTable('channels');
+  },
+};

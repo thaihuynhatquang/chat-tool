@@ -1,9 +1,0 @@
-extends: standard
-parser: 'babel-eslint'
-env:
-  jest: true
-rules:
-  node/no-deprecated-api:
-    - error
-    - ignoreModuleItems:
-        - constants

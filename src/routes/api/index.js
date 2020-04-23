@@ -1,22 +1,23 @@
-import { Router } from 'express'
-import { handleLimitOffset } from '../middleware/handleLimitOffset'
-import channels from './channels'
-import threads from './threads'
-import customers from './customers'
-import messages from './messages'
-import users from './users'
-import tags from './tags'
-import notes from './notes'
+import { Router } from 'express';
+import cors from 'cors';
+import handleLimitOffset from './middleware/handleLimitOffset';
+import authorize from './middleware/authorize';
+import v1 from './v1';
 
-const router = new Router()
+const router = new Router();
 
-router.use(handleLimitOffset)
-router.use('/channels', channels)
-router.use('/threads', threads)
-router.use('/customers', customers)
-router.use('/messages', messages)
-router.use('/users', users)
-router.use('/tags', tags)
-router.use('/notes', notes)
+const safe = (func) => (req, res, next) => {
+  try {
+    func(req, res, next);
+  } catch (err) {
+    next(err);
+  }
+};
 
-export default router
+router.use(cors());
+// router.use(safe(authorize));
+router.use(safe(handleLimitOffset));
+
+router.use('/v1', v1);
+
+export default router;

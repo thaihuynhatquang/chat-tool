@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 module.exports = (sequelize, DataTypes) => {
   const Customer = sequelize.define(
     'Customer',
@@ -7,55 +7,55 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
-        type: DataTypes.INTEGER
+        type: DataTypes.INTEGER,
       },
       channelId: {
         allowNull: false,
-        primaryKey: true,
         field: 'channel_id',
-        type: DataTypes.INTEGER
+        unique: 'compositeIndex',
+        type: DataTypes.INTEGER,
       },
       uniqueKey: {
         allowNull: false,
         field: 'unique_key',
-        unique: true,
-        type: DataTypes.STRING
+        unique: 'compositeIndex',
+        type: DataTypes.STRING,
       },
       name: {
         allowNull: false,
-        type: DataTypes.STRING(1024)
+        type: DataTypes.STRING(1024),
       },
       phone: {
-        type: DataTypes.STRING(50)
+        type: DataTypes.STRING(50),
       },
       additionData: {
         field: 'addition_data',
-        type: DataTypes.JSON
+        type: DataTypes.JSON,
       },
       createdAt: {
         field: 'created_at',
-        type: 'TIMESTAMP'
+        type: 'TIMESTAMP',
       },
       updatedAt: {
         field: 'updated_at',
-        type: 'TIMESTAMP'
-      }
+        type: 'TIMESTAMP',
+      },
     },
     {
-      tableName: 'customers'
-    }
-  )
+      tableName: 'customers',
+    },
+  );
 
   Customer.associate = function(models) {
-    models.Customer.hasMany(models.Note)
+    models.Customer.hasMany(models.Note);
     models.Customer.belongsToMany(models.Thread, {
-      through: 'customer_thread'
-    })
+      through: 'customer_thread',
+    });
     models.Customer.belongsToMany(models.Tag, {
-      through: 'CustomerTag'
-    })
-    models.Customer.belongsTo(models.Channel)
-  }
+      through: 'CustomerTag',
+    });
+    models.Customer.belongsTo(models.Channel);
+  };
 
-  return Customer
-}
+  return Customer;
+};

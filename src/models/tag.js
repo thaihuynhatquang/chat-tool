@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 module.exports = (sequelize, DataTypes) => {
   const Tag = sequelize.define(
     'Tag',
@@ -7,37 +7,37 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
-        type: DataTypes.INTEGER
+        type: DataTypes.INTEGER,
       },
       content: {
         allowNull: false,
-        type: DataTypes.STRING
+        type: DataTypes.STRING,
       },
       color: {
-        type: DataTypes.STRING(20)
+        type: DataTypes.STRING(20),
       },
       createdAt: {
         field: 'created_at',
-        type: 'TIMESTAMP'
+        type: 'TIMESTAMP',
       },
       updatedAt: {
         field: 'updated_at',
-        type: 'TIMESTAMP'
-      }
+        type: 'TIMESTAMP',
+      },
     },
     {
-      tableName: 'tags'
-    }
-  )
+      tableName: 'tags',
+    },
+  );
 
   Tag.associate = function(models) {
     models.Tag.belongsToMany(models.Customer, {
-      through: 'CustomerTag'
-    })
+      through: 'CustomerTag',
+    });
     models.Tag.belongsTo(models.User, {
-      foreignKey: 'creator'
-    })
-  }
+      foreignKey: 'creator',
+    });
+  };
 
-  return Tag
-}
+  return Tag;
+};

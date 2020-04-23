@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 module.exports = (sequelize, DataTypes) => {
   const Channel = sequelize.define(
     'Channel',
@@ -7,49 +7,50 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
-        type: DataTypes.INTEGER
+        type: DataTypes.INTEGER,
       },
       uniqueKey: {
         allowNull: false,
         field: 'unique_key',
-        unique: true,
-        type: DataTypes.STRING
+        unique: 'compositeIndex',
+        type: DataTypes.STRING,
       },
       type: {
         allowNull: false,
-        type: DataTypes.STRING
+        unique: 'compositeIndex',
+        type: DataTypes.STRING,
       },
       title: {
         allowNull: false,
-        type: DataTypes.STRING
+        type: DataTypes.STRING,
       },
       configs: {
-        type: DataTypes.JSON
+        type: DataTypes.JSON,
       },
       additionData: {
         field: 'addition_data',
-        type: DataTypes.JSON
+        type: DataTypes.JSON,
       },
       createdAt: {
         field: 'created_at',
-        type: 'TIMESTAMP'
+        type: 'TIMESTAMP',
       },
       updatedAt: {
         field: 'updated_at',
-        type: 'TIMESTAMP'
-      }
+        type: 'TIMESTAMP',
+      },
     },
     {
-      tableName: 'channels'
-    }
-  )
+      tableName: 'channels',
+    },
+  );
 
   Channel.associate = function(models) {
-    models.Channel.hasMany(models.Thread)
+    models.Channel.hasMany(models.Thread);
     models.Channel.belongsToMany(models.User, {
-      through: 'channel_user'
-    })
-  }
+      through: 'channel_user',
+    });
+  };
 
-  return Channel
-}
+  return Channel;
+};

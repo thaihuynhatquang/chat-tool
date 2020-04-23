@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 module.exports = (sequelize, DataTypes) => {
   const Thread = sequelize.define(
     'Thread',
@@ -7,72 +7,64 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
-        type: DataTypes.INTEGER
+        type: DataTypes.INTEGER,
       },
       channelId: {
         allowNull: false,
         field: 'channel_id',
-        type: DataTypes.INTEGER
+        type: DataTypes.INTEGER,
       },
       uniqueKey: {
         allowNull: false,
         field: 'unique_key',
         unique: true,
-        type: DataTypes.STRING
+        type: DataTypes.STRING,
       },
       title: {
         allowNull: false,
-        type: DataTypes.STRING
+        type: DataTypes.STRING,
       },
       status: {
         allowNull: false,
-        type: DataTypes.STRING
-      },
-      lastMsgId: {
-        field: 'last_msg_id',
-        type: DataTypes.STRING
-      },
-      missCount: {
-        field: 'miss_count',
-        type: DataTypes.INTEGER
-      },
-      missTime: {
-        field: 'miss_time',
-        type: DataTypes.DATE
+        type: DataTypes.STRING,
       },
       additionData: {
         field: 'addition_data',
-        type: DataTypes.JSON
+        type: DataTypes.JSON,
       },
       createdAt: {
         field: 'created_at',
-        type: 'TIMESTAMP'
+        type: 'TIMESTAMP',
       },
       updatedAt: {
         field: 'updated_at',
-        type: 'TIMESTAMP'
-      }
+        type: 'TIMESTAMP',
+      },
+      deletedAt: {
+        field: 'deleted_at',
+        type: 'TIMESTAMP',
+      },
     },
     {
-      tableName: 'threads'
-    }
-  )
+      tableName: 'threads',
+    },
+  );
 
   Thread.associate = function(models) {
-    models.Thread.belongsTo(models.Channel)
+    models.Thread.belongsTo(models.Channel);
     models.Thread.belongsToMany(models.Customer, {
-      through: 'customer_thread'
-    })
+      through: 'customer_thread',
+    });
     models.Thread.belongsToMany(models.User, {
       as: 'usersServing',
       through: 'thread_user_serving',
-      updatedAt: false
-    })
+      updatedAt: false,
+    });
     models.Thread.belongsToMany(models.User, {
       as: 'usersHistory',
-      through: 'thread_user_history'
-    })
-  }
+      through: 'thread_user_history',
+    });
+  };
 
-  return Thread
-}
+  return Thread;
+};

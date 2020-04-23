@@ -1,5 +1,6 @@
 import models from 'models'
 import Messenger from 'core/instantMessages/messenger'
+import FBComment from 'core/instantMessages/fbcomment'
 
 let _channels
 
@@ -12,7 +13,8 @@ const startUpChannels = async (app) => {
       ...acc,
       [type]: {
         ...acc[type],
-        [uniqueKey]: new Messenger(channel, app)
+        [uniqueKey]:
+          type === 'messenger' ? new Messenger(channel, app) : type === 'fbcomment' ? new FBComment(channel) : null
       }
     }
   }, {})

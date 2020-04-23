@@ -5,7 +5,8 @@ RUN apk update && apk add vim && apk add bash
 
 WORKDIR /app
 
-COPY . /app
-RUN yarn --loglevel=error
+RUN npm install --loglevel=error
 
-CMD yarn start
+COPY . /app
+
+CMD npm start

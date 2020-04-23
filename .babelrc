@@ -1,25 +1,19 @@
 {
-  "presets": ["env", "flow"],
+  "presets": ["env"],
   "plugins": [
     "transform-class-properties",
     "transform-object-rest-spread",
-    [
-      "module-resolver",
-      {
-        "alias": {
-          "app": "./src/app",
-          "config": "./src/config",
-          "constants": "./src/constants",
-          "core": "./src/core",
-          "cronjobs": "./src/cronjobs",
-          "database": "./src/database",
-          "models": "./src/models",
-          "routes": "./src/routes",
-          "types": "./src/types",
-          "utils": "./src/utils",
-          "services": "./src/services"
-        }
+    ["module-resolver", {
+      "alias": {
+        "app": "./src/app",
+        "config": "./src/config",
+        "constants": "./src/constants",
+        "core": "./src/core",
+        "models": "./src/models",
+        "routes": "./src/routes",
+        "types": "./src/types",
+        "utils": "./src/utils"
       }
-    ]
+    }]
   ]
 }

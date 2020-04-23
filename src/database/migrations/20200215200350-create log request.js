@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 module.exports = {
   up: (queryInterface, Sequelize) => {
     return queryInterface.createTable('log_requests', {
@@ -6,43 +6,43 @@ module.exports = {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
       },
       path: {
         allowNull: false,
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       method: {
         allowNull: false,
-        type: Sequelize.STRING(20)
+        type: Sequelize.STRING(20),
       },
       params: {
-        type: Sequelize.JSON
+        type: Sequelize.JSON,
       },
       body: {
-        type: Sequelize.JSON
+        type: Sequelize.JSON,
       },
       elapsedTime: {
         field: 'elapsed_time',
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
       },
       responseStatus: {
         field: 'response_status',
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
       },
       createdAt: {
         field: 'created_at',
         type: 'TIMESTAMP',
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
       },
       updatedAt: {
         field: 'updated_at',
         type: 'TIMESTAMP',
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
-      }
-    })
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'),
+      },
+    });
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable('log_requests')
-  }
-}
+    return queryInterface.dropTable('log_requests');
+  },
+};
