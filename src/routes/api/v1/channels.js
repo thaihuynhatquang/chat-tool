@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import db from 'models';
-import client from 'config/redis';
 
 const router = new Router();
 const Op = db.Sequelize.Op;
@@ -65,7 +64,7 @@ router.delete('/:channelId/users', async (req, res) => {
 
 router.get('/:channelId/threads', async (req, res) => {
   const { channelId } = req.params;
-  const { limit, offset, status, title, sort } = req.query;
+  const { limit, offset, status, isMiss, title, sort } = req.query;
   const channel = await db.Channel.findByPk(channelId);
   if (!channel) res.status(404).send('Can not find channel');
 
@@ -80,8 +79,7 @@ router.get('/:channelId/threads', async (req, res) => {
       ],
     };
   }
-  if (status) where = { ...where, status };
-
+  if (isMiss === 'true') where = { ...where, missCount: { [Op.gt]: 0 } };
   let order = [['updatedAt', 'desc']];
 
   if (sort) {
@@ -100,32 +98,15 @@ router.get('/:channelId/threads', async (req, res) => {
 
   threads = await Promise.all(
     threads.map(async (thread) => {
-      const threadInfo = JSON.parse(await client.getAsync(`threadInfo:${thread.id}`));
-      return { ...thread, ...threadInfo };
+      const lastMessage = await db.Message.findOne({
+        raw: true,
+        where: { mid: thread.lastMsgId, threadId: thread.id },
+      });
+      const { dataValues: customer } = await db.Customer.findByPk(lastMessage.customerId);
+      return { ...thread, lastMessage: { ...lastMessage, customer } };
     }),
   );
 
-  let lastMessages = threads.filter((thread) => thread.lastMessage).map((thread) => thread.lastMessage);
-
-  const customersIdList = [...new Set(lastMessages.map((msg) => msg.customerId))];
-
-  const customers = await db.Customer.findAll({
-    where: { id: { [Op.in]: customersIdList } },
-  });
-
-  lastMessages = lastMessages.map((msg) => ({
-    ...msg,
-    customer: customers.find((el) => el.id === msg.customerId),
-  }));
-
-  threads = threads.map((thread) => {
-    return thread.lastMessage
-      ? {
-          ...thread,
-          lastMessage: lastMessages.find((el) => el.mid === thread.lastMessage.mid),
-        }
-      : thread;
-  });
   return res.json({ count, data: threads });
 });
 

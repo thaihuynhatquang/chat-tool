@@ -2,16 +2,16 @@
 module.exports = {
   up: (queryInterface, Sequelize) => {
     return queryInterface
-      .createTable('threads', {
+      .createTable('thread_inference_data', {
         id: {
           allowNull: false,
           autoIncrement: true,
           primaryKey: true,
           type: Sequelize.INTEGER,
         },
-        channelId: {
+        threadId: {
           allowNull: false,
-          field: 'channel_id',
+          field: 'thread_id',
           type: Sequelize.INTEGER,
         },
         uniqueKey: {
@@ -19,18 +19,6 @@ module.exports = {
           field: 'unique_key',
           unique: true,
           type: Sequelize.STRING,
-        },
-        title: {
-          allowNull: false,
-          type: Sequelize.STRING,
-        },
-        status: {
-          allowNull: false,
-          type: Sequelize.STRING,
-        },
-        additionData: {
-          field: 'addition_data',
-          type: Sequelize.JSON,
         },
         missCount: {
           field: 'miss_count',
@@ -44,33 +32,26 @@ module.exports = {
           field: 'last_msg_id',
           type: Sequelize.STRING,
         },
-        readAt: {
-          field: 'read_at',
-          type: 'TIMESTAMP',
-        },
         createdAt: {
+          allowNull: false,
           field: 'created_at',
-          type: 'TIMESTAMP',
+          type: Sequelize.DATE,
           defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
         },
         updatedAt: {
+          allowNull: false,
           field: 'updated_at',
-          type: 'TIMESTAMP',
-          defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'),
-        },
-        deletedAt: {
-          field: 'deleted_at',
-          type: 'TIMESTAMP',
+          type: Sequelize.DATE,
           defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'),
         },
       })
       .then(() =>
-        queryInterface.addIndex('threads', {
-          fields: ['channel_id'],
+        queryInterface.addIndex('thread_inference_data', {
+          fields: ['thread_id'],
         }),
       );
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable('threads');
+    return queryInterface.dropTable('thread_inference_data');
   },
 };

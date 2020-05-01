@@ -1,14 +1,15 @@
 {
-  "presets": ["env"],
+  "presets": ["@babel/preset-env"],
   "plugins": [
-    "transform-class-properties",
-    "transform-object-rest-spread",
+    "@babel/plugin-proposal-class-properties",
+    "@babel/plugin-proposal-object-rest-spread",
     ["module-resolver", {
       "alias": {
         "app": "./src/app",
         "config": "./src/config",
         "constants": "./src/constants",
         "core": "./src/core",
+        "database": "./src/database",
         "models": "./src/models",
         "routes": "./src/routes",
         "types": "./src/types",

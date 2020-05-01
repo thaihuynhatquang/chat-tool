@@ -131,14 +131,7 @@ class Messenger extends InstantMessage {
     const thread = await db.Thread.findOne({
       where: { channelId: this.channel.id, uniqueKey },
     });
-    const threadInfo = JSON.parse(await client.getAsync(`threadInfo:${thread.id}`));
-    return client.set(
-      `threadInfo:${thread.id}`,
-      JSON.stringify({
-        ...threadInfo,
-        readAt: formatTime(message.timestamp),
-      }),
-    );
+    return thread.update({ readAt: formatTime(message.timestamp) });
   };
 
   sendMessage = async (sendData) => {

@@ -1,75 +1,45 @@
-import client from 'config/redis';
-import { nullIfEmptyObj } from 'utils/common';
-
-const saveInferenceField = async (formattedMessage, redisKey) => {
-  const redisInfo = JSON.parse(await client.getAsync(redisKey));
-  const missCount = formattedMessage.isVerified
-    ? 0
-    : redisInfo && redisInfo.missCount
-    ? parseInt(redisInfo.missCount) + 1
-    : 1;
-  const missTime = formattedMessage.isVerified
-    ? null
-    : redisInfo && redisInfo.missTime
-    ? redisInfo.missTime
-    : formattedMessage.msgCreatedAt;
-  return client.set(
-    redisKey,
-    JSON.stringify({
-      missCount,
-      missTime,
-      lastMessage: formattedMessage,
-    }),
-  );
-};
+import db from 'models';
 
 export const oneLevel = async (formattedMessage, thread) => {
-  return saveInferenceField(formattedMessage, `threadInfo:${thread.id}`);
+  const { isVerified, mid, msgCreatedAt } = formattedMessage;
+  let { missTime, missCount } = thread;
+  missCount = isVerified ? 0 : missCount ? missCount + 1 : 1;
+  missTime = isVerified ? null : missTime || msgCreatedAt;
+  return thread.update({ missCount, missTime, lastMsgId: mid });
 };
 
 export const twoLevel = async (formattedMessage, thread) => {
-  if (!formattedMessage.parentId) {
-    await client.set(
-      `threadInfo:${thread.id}:${formattedMessage.mid}`,
-      JSON.stringify({
-        missCount: formattedMessage.isVerified ? 0 : 1,
-        missTime: formattedMessage.isVerified ? null : formattedMessage.msgCreatedAt,
-        lastMessage: formattedMessage,
-      }),
-    );
-  } else {
-    await saveInferenceField(formattedMessage, `threadInfo:${thread.id}:${formattedMessage.parentId}`);
+  const { mid, isVerified, parentId, msgCreatedAt } = formattedMessage;
+
+  if (!parentId) {
+    await db.ThreadInferenceData.create({
+      uniqueKey: mid,
+      threadId: thread.id,
+      missCount: isVerified ? 0 : 1,
+      missTime: isVerified ? null : msgCreatedAt,
+      lastMsgId: mid,
+    });
   }
 
-  let messageKeys = [];
+  const inferenceData = await db.ThreadInferenceData.findOne({
+    where: {
+      uniqueKey: parentId || mid,
+      threadId: thread.id,
+    },
+  });
 
-  let cursor = 0;
-  while (true) {
-    const [nextCursor, keys] = await client.scanAsync(cursor, 'MATCH', `threadInfo:${thread.id}:*`, 'COUNT', 1000);
-    messageKeys.push(...keys);
-    if (nextCursor === '0') break;
-    cursor = nextCursor;
-  }
-  const listMessageInfo = (await Promise.all(messageKeys.map((key) => client.getAsync(key)))).map((el) =>
-    JSON.parse(el),
-  );
+  await inferenceData.update({
+    missCount: isVerified ? 0 : parentId ? inferenceData.missCount + 1 : 1,
+    missTime: isVerified ? null : inferenceData.missTime || msgCreatedAt,
+    lastMsgId: mid,
+  });
 
-  const missCount = listMessageInfo.reduce((acc, msg) => msg.missCount + acc, 0);
+  const [{ missTime, missCount }] = await db.ThreadInferenceData.findAll({
+    attributes: [
+      [db.sequelize.fn('SUM', db.sequelize.col('miss_count')), 'missCount'],
+      [db.sequelize.fn('MIN', db.sequelize.col('miss_time')), 'missTime'],
+    ],
+  });
 
-  const missTime = nullIfEmptyObj(
-    listMessageInfo.reduce((acc, msg) => {
-      if (!msg.missTime) return acc;
-      if (msg.missTime < acc) return msg.missTime;
-      else return acc;
-    }, {}),
-  );
-
-  return client.set(
-    `threadInfo:${thread.id}`,
-    JSON.stringify({
-      missTime,
-      missCount,
-      lastMessage: formattedMessage,
-    }),
-  );
+  return thread.update({ missCount, missTime, lastMsgId: mid });
 };

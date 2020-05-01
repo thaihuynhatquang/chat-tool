@@ -162,7 +162,7 @@ class FBComment extends InstantMessage {
     };
   };
 
-  triggerOnHandleMessage = async (formattedMessage, thread, customer) => {
+  triggerOnHandleMessage = async (formattedMessage, thread) => {
     calculateInferenceField.twoLevel(formattedMessage, thread);
   };
 
@@ -195,6 +195,7 @@ class FBComment extends InstantMessage {
 
   deleteComment = async (message) => {
     const { comment_id: mid, created_time: msgDeletedAt } = message;
+    db.ThreadInferenceData.update({ missCount: 0, missTime: null }, { where: { uniqueKey: mid } });
     return db.Message.update(
       { msgDeletedAt: formatTime(msgDeletedAt * 1000) },
       { where: { [db.Sequelize.Op.or]: [{ mid }, { parentId: mid }] } },

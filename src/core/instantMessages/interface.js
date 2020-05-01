@@ -1,76 +1,42 @@
-// @flow
-import models from 'models'
+import db from 'models';
+import client from 'config/redis';
 
-const debug = require('debug')('app:im:interface')
-/**
- * InstantMessage interface. Other IMs should extend this class.
- */
+const debug = require('debug')('app:im:interface');
 class InstantMessage {
-  /**
-   * Find customer in db, if not exist, create new customer
-   * @abstract
-   * @param {Object} message Different with each IMs.
-   * @return {Object} customer
-   */
   getOrCreateCustomerByMsg = (message) => {
-    throw new Error('Empty implementation')
-  }
-
-  /**
-   * Find thread in db, if not exist, create new thread
-   * @abstract
-   * @param {Object} message Different with each IMs.
-   * @return {Object} thread
-   */
+    throw new Error('Empty implementation');
+  };
   getOrCreateThreadByMsg = (message) => {
-    throw new Error('Empty implementation')
-  }
+    throw new Error('Empty implementation');
+  };
 
-  /**
-   * Format message to standard format
-   * @param {Object} message Different with each IMs.
-   * @return {Object} JSON format like:
-   * { mid: string,
-   *   threadId: int,
-   *   cusomerId: int,
-   *   isVerified: boolean
-   *   userId?: int,
-   *   parentId?: string,
-   *   content: text,
-   *   additionData?: json,
-   *   msgCreatedAt: timestamp,
-   *   msgUpdatedAt: timestamp,
-   *   msgDeletedAt?: timestamp
-   * }
-   */
   getFormattedMessage = (message, thread, customer) => {
-    throw new Error('Empty implementation')
-  }
+    throw new Error('Empty implementation');
+  };
 
-  /**
-   * Listen whenever new message is received.
-   * This function should be same among all IM instances.
-   * @param  {Object} message Different with each IMs.
-   */
   onMessage = async (message) => {
-    debug('Receive message:\n', JSON.stringify(message, null, 2))
-    const customerPromise = this.getOrCreateCustomerByMsg(message)
-    const threadPromise = this.getOrCreateThreadByMsg(message)
-    const { customer } = await customerPromise
-    const { thread } = await threadPromises
-    const formatedMessage = this.getFormattedMessage(message, thread, customer)
-    await Promise.all([thread.addCustomer(customer), models.Message.create(formatedMessage)])
-  }
+    debug('Receive message:\n', JSON.stringify(message, null, 2));
+    const customerPromise = this.getOrCreateCustomerByMsg(message);
+    const threadPromise = this.getOrCreateThreadByMsg(message);
+    const { customer } = await customerPromise;
+    const { thread } = await threadPromise;
+    const formatedMessage = await this.getFormattedMessage(message, thread, customer);
+    const [savedMessage] = await Promise.all([db.Message.create(formatedMessage), thread.addCustomer(customer)]);
 
-  /**
-   * Function send message
-   * @abstract
-   * @param  {Object} message Different with each IMs.
-   * @return {Promise} Resolve value indicates if the message is successfully sent or not.
-   */
+    client.delAsync(savedMessage.mid);
+
+    this.triggerOnHandleMessage(formatedMessage, thread);
+  };
+
+  triggerOnHandleMessage = (formatedMessage, thread, customer) => {};
+
+  onEvent = async (event) => {
+    debug('Receive event:\n', JSON.stringify(event, null, 2));
+  };
+
   sendMessage = async (message) => {
-    return false
-  }
+    return false;
+  };
 }
 
-export default InstantMessage
+export default InstantMessage;

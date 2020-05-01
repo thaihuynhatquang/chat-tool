@@ -32,6 +32,22 @@ module.exports = (sequelize, DataTypes) => {
         field: 'addition_data',
         type: DataTypes.JSON,
       },
+      missCount: {
+        field: 'miss_count',
+        type: DataTypes.INTEGER,
+      },
+      missTime: {
+        field: 'miss_time',
+        type: 'TIMESTAMP',
+      },
+      lastMsgId: {
+        field: 'last_msg_id',
+        type: DataTypes.STRING,
+      },
+      readAt: {
+        field: 'read_at',
+        type: 'TIMESTAMP',
+      },
       createdAt: {
         field: 'created_at',
         type: 'TIMESTAMP',

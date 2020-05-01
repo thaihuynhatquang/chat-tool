@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import startChannels from 'core/startChannels';
 import db from 'models';
-import client from 'config/redis';
+import { THREAD_STATUS_UNREAD, THREAD_STATUS_PROCESSING, THREAD_STATUS_SPAM, THREAD_STATUS_DONE } from 'constants';
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -18,16 +18,20 @@ const upload = multer({
 const router = new Router();
 const Op = db.Sequelize.Op;
 
+const getLastMessage = async (thread) => {
+  const lastMessage = await db.Message.findOne({
+    raw: true,
+    where: { mid: thread.lastMsgId, threadId: thread.id },
+  });
+  const { dataValues: customer } = await db.Customer.findByPk(lastMessage.customerId);
+  return { ...lastMessage, customer };
+};
+
 router.get('/:threadId', async (req, res) => {
   const { threadId } = req.params;
-  let thread = await db.Thread.findOne({ raw: true, where: { id: threadId } });
+  const thread = await db.Thread.findOne({ raw: true, where: { id: threadId } });
   if (!thread) return res.status(404).send('Can not find Thread');
-  const threadInfo = JSON.parse(await client.getAsync(`threadInfo:${thread.id}`));
-  thread = { ...thread, ...threadInfo };
-  if (thread.lastMessage) {
-    const customer = await db.Customer.findByPk(thread.lastMessage.customerId);
-    thread = { ...thread, lastMessage: { ...thread.lastMessage, customer } };
-  }
+  thread.lastMessage = await getLastMessage(thread);
   return res.json(thread);
 });
 
@@ -64,6 +68,9 @@ router.get('/:threadId/customers', async (req, res) => {
 router.put('/:threadId/status', async (req, res) => {
   const { status } = req.body;
   const { threadId } = req.params;
+  if (![THREAD_STATUS_SPAM, THREAD_STATUS_DONE, THREAD_STATUS_PROCESSING, THREAD_STATUS_UNREAD].includes(status)) {
+    return res.status(400).send('Unknown status');
+  }
   await db.Thread.update(
     {
       status,
@@ -72,34 +79,41 @@ router.put('/:threadId/status', async (req, res) => {
       where: { id: threadId },
     },
   );
-  const thread = await db.Thread.findByPk(threadId);
-  if (!thread) return res.status(404).send('Can not find thread');
+  const thread = await db.Thread.findOne({ raw: true, where: { id: threadId } });
+  thread.lastMessage = await getLastMessage(thread);
   return res.json(thread);
 });
 
 router.get('/:threadId/messages', async (req, res) => {
   const { limit, offset } = req.query;
   const { threadId } = req.params;
-  const messages = await db.Message.findAndCountAll({
+  const { count, rows: messages } = await db.Message.findAndCountAll({
     raw: true,
     where: { threadId },
     limit,
     offset,
   });
 
-  const customersIdList = [...new Set(messages.rows.map((msg) => msg.customerId))];
+  const customersIdList = [...new Set(messages.map((msg) => msg.customerId))];
+  const usersList = [...new Set(messages.filter((msg) => msg.userId !== null).map((msg) => msg.userId))];
 
-  const customers = await db.Customer.findAll({
-    where: { id: { [Op.in]: customersIdList } },
-  });
+  const [customers, users] = await Promise.all([
+    db.Customer.findAll({
+      where: { id: { [Op.in]: customersIdList } },
+    }),
+    db.User.findAll({
+      where: { id: { [Op.in]: usersList } },
+    }),
+  ]);
 
-  const data = messages.rows.map((msg) => {
+  const data = messages.map((msg) => {
     return {
       ...msg,
       customer: customers.find((el) => el.id === msg.customerId),
+      user: users.find((el) => el.id === msg.userId),
     };
   });
-  return res.json({ count: messages.count, data });
+  return res.json({ count, data });
 });
 
 router.post('/:threadId/messages', upload.single('attachment'), async (req, res) => {
