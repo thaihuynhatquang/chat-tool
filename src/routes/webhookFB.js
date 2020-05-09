@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import startChannels from 'core/startChannels';
 import { getCommentAttachmentData } from 'utils/graph';
+import { MESSENGER_CHANNEL_TYPE, FBCOMMENT_CHANNEL_TYPE } from 'constants';
 
 const debug = require('debug')('routes:webhookFB');
 
@@ -24,7 +25,7 @@ router.post('/', async (req, res) => {
   data.entry.forEach((entry) => {
     // Iterate over each messaging event
     const { id: pageId } = entry;
-    const type = entry.messaging ? 'messenger' : 'fbcomment';
+    const type = entry.messaging ? MESSENGER_CHANNEL_TYPE : FBCOMMENT_CHANNEL_TYPE;
     const channel = channels[type][pageId];
 
     if (!channel) return;

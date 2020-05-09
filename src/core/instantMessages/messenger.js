@@ -21,7 +21,7 @@ const getAttachmentType = (file) => {
 
 class Messenger extends InstantMessage {
   constructor(channel, app) {
-    super();
+    super(channel, app);
     debug(`Init messenger channel ${channel.title}`);
     let {
       configs: { accessToken, verifyToken, appSecret, broadcastEchoes },
@@ -112,8 +112,11 @@ class Messenger extends InstantMessage {
     return { customer: cus, isCreated: true };
   };
 
-  triggerOnHandleMessage = async (formattedMessage, thread, customer) => {
-    calculateInferenceField.oneLevel(formattedMessage, thread);
+  triggerOnHandleMessage = async (savedMessage, thread) => {
+    const oldMissCount = thread.missCount;
+    await calculateInferenceField.oneLevel(savedMessage, thread);
+    const missCountChange = thread.missCount - oldMissCount;
+    this.emitSocketNewMessage(savedMessage, thread, missCountChange);
   };
 
   onEvent = async (event) => {

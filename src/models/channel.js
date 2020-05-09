@@ -52,5 +52,57 @@ module.exports = (sequelize, DataTypes) => {
     });
   };
 
+  Channel.getMissCountsByUserId = async function(userId) {
+    let missCountsByChannelIds = await sequelize.query(
+      `SELECT 
+      threads.channel_id 'channelId',
+      SUM(threads.miss_count) 'missCount'
+      FROM
+          threads
+              INNER JOIN
+          channels ON channels.id = threads.channel_id
+      WHERE
+          JSON_EXTRACT(channels.configs, '$.isBroadcast') = TRUE or threads.id IN (SELECT 
+                  thread_id
+              FROM
+                  thread_user_serving
+              WHERE
+                  thread_user_serving.user_id = $userId)
+      GROUP BY threads.channel_id`,
+      { bind: { userId }, type: sequelize.QueryTypes.SELECT },
+    );
+
+    missCountsByChannelIds = missCountsByChannelIds.reduce((acc, item) => {
+      acc[item.channelId] = parseInt(item.missCount);
+      return acc;
+    }, {});
+
+    return missCountsByChannelIds;
+  };
+
+  Channel.prototype.getMissCountByUserId = async function(userId) {
+    const { isBroadcast } = this.configs;
+    const [{ missCount }] = await sequelize.query(
+      `SELECT 
+      SUM(threads.miss_count) 'missCount'
+      FROM
+          threads
+      WHERE
+        ($isBroadcast = TRUE
+            OR threads.id IN (SELECT 
+                thread_id
+            FROM
+                thread_user_serving
+            WHERE
+                thread_user_serving.user_id = $userId))
+            AND threads.channel_id = $channelId`,
+      {
+        bind: { userId, channelId: this.id, isBroadcast },
+        type: sequelize.QueryTypes.SELECT,
+      },
+    );
+    return parseInt(missCount) || 0;
+  };
+
   return Channel;
 };

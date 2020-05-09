@@ -30,8 +30,8 @@ const extractPhotos = (post) => {
   return photos;
 };
 class FBComment extends InstantMessage {
-  constructor(channel) {
-    super();
+  constructor(channel, app) {
+    super(channel, app);
     debug(`Init FBComment channel ${channel.title}`);
     let {
       configs: { accessToken },
@@ -162,8 +162,11 @@ class FBComment extends InstantMessage {
     };
   };
 
-  triggerOnHandleMessage = async (formattedMessage, thread) => {
-    calculateInferenceField.twoLevel(formattedMessage, thread);
+  triggerOnHandleMessage = async (savedMessage, thread) => {
+    const oldMissCount = thread.missCount;
+    await calculateInferenceField.twoLevel(savedMessage, thread);
+    const missCountChange = thread.missCount - oldMissCount;
+    this.emitSocketNewMessage(savedMessage, thread, missCountChange);
   };
 
   onEvent = async (event) => {

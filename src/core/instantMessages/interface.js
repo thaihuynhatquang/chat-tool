@@ -1,11 +1,19 @@
+import { getRoomName } from 'utils/common';
 import db from 'models';
 import client from 'config/redis';
-
+import { socketsJoinRoom, emitNewMessage } from 'utils/socket';
+import { CHANNEL_SOCKET_KEY, THREAD_SOCKET_KEY } from 'constants';
 const debug = require('debug')('app:im:interface');
 class InstantMessage {
+  constructor(channel, app) {
+    this.channel = channel;
+    this.app = app;
+  }
+
   getOrCreateCustomerByMsg = (message) => {
     throw new Error('Empty implementation');
   };
+
   getOrCreateThreadByMsg = (message) => {
     throw new Error('Empty implementation');
   };
@@ -25,10 +33,29 @@ class InstantMessage {
 
     client.delAsync(savedMessage.mid);
 
-    this.triggerOnHandleMessage(formatedMessage, thread);
+    this.triggerOnHandleMessage(savedMessage, thread);
   };
 
-  triggerOnHandleMessage = (formatedMessage, thread, customer) => {};
+  triggerOnHandleMessage = (savedMessage, thread) => {};
+
+  emitSocketNewMessage = async (savedMessage, thread, missCountChange) => {
+    const io = this.app.io;
+
+    const roomName = this.channel.configs.isBroadcast
+      ? getRoomName(CHANNEL_SOCKET_KEY, this.channel.id)
+      : getRoomName(THREAD_SOCKET_KEY, thread.id);
+
+    if (!this.channel.configs.isBroadcast) {
+      const usersServing = await thread.getUsersServing();
+      await socketsJoinRoom(io, usersServing, roomName);
+    }
+
+    emitNewMessage(io, roomName, {
+      thread,
+      message: savedMessage,
+      channel: { id: thread.channelId, missCountChange },
+    });
+  };
 
   onEvent = async (event) => {
     debug('Receive event:\n', JSON.stringify(event, null, 2));

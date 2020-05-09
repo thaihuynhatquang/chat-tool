@@ -28,17 +28,22 @@ export const twoLevel = async (formattedMessage, thread) => {
     },
   });
 
-  await inferenceData.update({
-    missCount: isVerified ? 0 : parentId ? inferenceData.missCount + 1 : 1,
-    missTime: isVerified ? null : inferenceData.missTime || msgCreatedAt,
-    lastMsgId: mid,
-  });
+  if (inferenceData) {
+    await inferenceData.update({
+      missCount: isVerified ? 0 : parentId ? inferenceData.missCount + 1 : 1,
+      missTime: isVerified ? null : inferenceData.missTime || msgCreatedAt,
+      lastMsgId: mid,
+    });
+  }
 
   const [{ missTime, missCount }] = await db.ThreadInferenceData.findAll({
     attributes: [
       [db.sequelize.fn('SUM', db.sequelize.col('miss_count')), 'missCount'],
       [db.sequelize.fn('MIN', db.sequelize.col('miss_time')), 'missTime'],
     ],
+    where: {
+      threadId: thread.id,
+    },
   });
 
   return thread.update({ missCount, missTime, lastMsgId: mid });

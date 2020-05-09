@@ -2,7 +2,16 @@ import { Router } from 'express';
 import multer from 'multer';
 import startChannels from 'core/startChannels';
 import db from 'models';
-import { THREAD_STATUS_UNREAD, THREAD_STATUS_PROCESSING, THREAD_STATUS_SPAM, THREAD_STATUS_DONE } from 'constants';
+import {
+  THREAD_STATUS_UNREAD,
+  THREAD_STATUS_PROCESSING,
+  THREAD_STATUS_SPAM,
+  THREAD_STATUS_DONE,
+  CHANNEL_SOCKET_KEY,
+} from 'constants';
+
+import { getRoomName } from 'utils/common';
+import { emitThreadUpdateStatus } from 'utils/socket';
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -32,6 +41,7 @@ router.get('/:threadId', async (req, res) => {
   const thread = await db.Thread.findOne({ raw: true, where: { id: threadId } });
   if (!thread) return res.status(404).send('Can not find Thread');
   thread.lastMessage = await getLastMessage(thread);
+  emitThreadUpdateStatus(req.io, getRoomName(CHANNEL_SOCKET_KEY, thread.channelId), { thread });
   return res.json(thread);
 });
 

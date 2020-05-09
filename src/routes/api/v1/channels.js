@@ -9,11 +9,14 @@ router.get('/', async (req, res) => {
   const user = await db.User.findByPk(req.user.id);
   let [count, channels] = await Promise.all([user.countChannels(), user.getChannels({ raw: true, limit, offset })]);
 
-  channels = channels.map((channel) => ({
-    ...channel,
-    // TODO: calulate misscount for channel
-    missCount: Math.floor(Math.random() * 100),
-  }));
+  const missCountsByChannelId = await db.Channel.getMissCountsByUserId(user.id);
+
+  channels = channels.map((channel) => {
+    return {
+      ...channel,
+      missCount: missCountsByChannelId[channel.id] || 0,
+    };
+  });
   return res.json({ count, data: channels });
 });
 
@@ -24,7 +27,7 @@ router.get('/:channelId', async (req, res) => {
   return res.json({
     ...channel.dataValues,
     // TODO: calculate missCount for channel
-    missCount: Math.floor(Math.random() * 100),
+    missCount: await channel.getMissCountByUserId(req.user.id),
   });
 });
 
