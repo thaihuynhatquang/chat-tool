@@ -11,6 +11,7 @@ import {
 } from 'constants';
 
 import { getRoomName } from 'utils/common';
+import { threadsWithLastMessage, messagesWithCustomerAndUser } from 'utils/db';
 import { emitThreadUpdateStatus } from 'utils/socket';
 
 const upload = multer({
@@ -26,24 +27,14 @@ const upload = multer({
 
 const router = new Router();
 const Op = db.Sequelize.Op;
-const { sequelize } = db;
-
-const getLastMessage = async (thread) => {
-  const lastMessage = await db.Message.findOne({
-    raw: true,
-    where: { mid: thread.lastMsgId, threadId: thread.id },
-  });
-  const { dataValues: customer } = await db.Customer.findByPk(lastMessage.customerId);
-  return { ...lastMessage, customer };
-};
 
 router.get('/:threadId', async (req, res) => {
   const { threadId } = req.params;
-  const thread = await db.Thread.findOne({ raw: true, where: { id: threadId } });
+  const thread = await db.Thread.findByPk(threadId);
   if (!thread) return res.status(404).send('Can not find Thread');
-  thread.lastMessage = await getLastMessage(thread);
-  emitThreadUpdateStatus(req.io, getRoomName(CHANNEL_SOCKET_KEY, thread.channelId), { thread });
-  return res.json(thread);
+  const threadWithLastMessage = await threadsWithLastMessage(thread);
+  emitThreadUpdateStatus(req.io, getRoomName(CHANNEL_SOCKET_KEY, thread.channelId), { thread: threadWithLastMessage });
+  return res.json(threadWithLastMessage);
 });
 
 router.get('/:threadId/user-serving', async (req, res) => {
@@ -125,26 +116,7 @@ router.get('/:threadId/messages', async (req, res) => {
     offset,
   });
 
-  const customersIdList = [...new Set(messages.map((msg) => msg.customerId))];
-  const usersList = [...new Set(messages.filter((msg) => msg.userId !== null).map((msg) => msg.userId))];
-
-  const [customers, users] = await Promise.all([
-    db.Customer.findAll({
-      where: { id: { [Op.in]: customersIdList } },
-    }),
-    db.User.findAll({
-      where: { id: { [Op.in]: usersList } },
-    }),
-  ]);
-
-  const data = messages.map((msg) => {
-    return {
-      ...msg,
-      customer: customers.find((el) => el.id === msg.customerId),
-      user: users.find((el) => el.id === msg.userId),
-    };
-  });
-  return res.json({ count, data });
+  return res.json({ count, data: await messagesWithCustomerAndUser(messages) });
 });
 
 router.post('/:threadId/messages', upload.single('attachment'), async (req, res) => {

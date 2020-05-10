@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import _ from 'lodash';
 import db from 'models';
+import { threadsWithLastMessage } from 'utils/db';
 
 const router = new Router();
 const Op = db.Sequelize.Op;
@@ -146,25 +147,13 @@ router.get('/:channelId/threads', async (req, res) => {
         user.getThreadsServing({ where, order: orders, limit }),
       ]);
 
-  threads = await Promise.all(
-    threads.map(async (thread) => {
-      if (!thread.lastMsgId) return thread;
-      const lastMessage = await db.Message.findOne({
-        where: { mid: thread.lastMsgId, threadId: thread.id },
-      });
-      const { dataValues: customer } = await db.Customer.findByPk(lastMessage.customerId);
-
-      lastMessage.dataValues.customer = customer;
-      thread.dataValues.lastMessage = lastMessage;
-      return thread;
-    }),
-  );
+  threads = await threadsWithLastMessage(threads);
 
   if (threads.length === 0) {
     return res.json({ count, data: threads });
   }
 
-  // NOTE create cursorbase
+  // Create cursorbase
   const lastThread = threads[threads.length - 1];
 
   const encodeNextCursor = Buffer.from(JSON.stringify({ updatedAt: lastThread.updatedAt, id: lastThread.id })).toString(
