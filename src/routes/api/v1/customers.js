@@ -65,13 +65,54 @@ router.post('/:customerId/tags', async (req, res) => {
   return res.json({ creator, customerId: customer.id, tagId: tag.id });
 });
 
-router.post('/:customerId/tags', async (req, res) => {
+router.delete('/:customerId/tags/:tagId', async (req, res) => {
+  const { tagId } = req.params;
+  const { id: creator } = req.user;
+  const [customer, tag] = await Promise.all([db.Customer.findByPk(req.params.customerId), db.Tag.findByPk(tagId)]);
+  if (!customer || !tag) {
+    return res.status(404).send('Can not find customer or tag');
+  }
+  const numberEffect = await customer.removeTag(tag);
+  if (numberEffect === 0) res.status(404).send('Can not find tag');
+  return res.sendStatus(200);
+});
+
+router.post('/:customerId/notes', async (req, res) => {
   const { content } = req.body;
   const { id: creator } = req.user;
   const customer = await db.Customer.findByPk(req.params.customerId);
-  if (!customer) return res.status(404).send('Can not find Customer');
-  const note = await customer.createNote({ content, creator });
+  if (!customer) return res.status(404).send('Can not find customer');
+  const { id: noteId } = await customer.createNote({
+    content,
+    creator,
+  });
+  const note = await db.Note.scope('withUser').findByPk(noteId);
   return res.json(note);
+});
+
+router.put('/:customerId/notes/:noteId', async (req, res) => {
+  const { noteId } = req.params;
+  const { content } = req.body;
+  await db.Note.update(
+    { content },
+    {
+      where: { id: noteId },
+    },
+  );
+  const note = await db.Note.scope('withUser').findByPk(noteId);
+  if (!note) return res.status(404).send('Can not find note');
+  return res.json(note);
+});
+
+router.delete('/:customerId/notes/:noteId', async (req, res) => {
+  const { noteId } = req.params;
+  const { id: creator } = req.user;
+  const numberEffect = await db.Note.destroy({
+    where: { id: noteId },
+  });
+
+  if (numberEffect === 0) res.status(404).send('Can not find note');
+  return res.sendStatus(200);
 });
 
 export default router;

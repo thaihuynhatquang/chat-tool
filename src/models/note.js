@@ -38,5 +38,11 @@ module.exports = (sequelize, DataTypes) => {
     });
   };
 
+  Note.scopes = function(models) {
+    models.Note.addScope('withUser', {
+      include: [models.User],
+    });
+  };
+
   return Note;
 };

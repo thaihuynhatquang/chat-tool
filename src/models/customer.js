@@ -59,7 +59,13 @@ module.exports = (sequelize, DataTypes) => {
 
   Customer.scopes = function(models) {
     models.Customer.addScope('withNotesAndTags', {
-      include: [models.Note, models.Tag],
+      include: [
+        {
+          model: models.Note,
+          include: [models.User],
+        },
+        models.Tag,
+      ],
     });
   };
 

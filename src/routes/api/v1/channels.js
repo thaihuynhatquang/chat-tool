@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import _ from 'lodash';
 import db from 'models';
 
 const router = new Router();
@@ -26,7 +27,6 @@ router.get('/:channelId', async (req, res) => {
   if (!channel) return res.status(404).send(`Can not find channel`);
   return res.json({
     ...channel.dataValues,
-    // TODO: calculate missCount for channel
     missCount: await channel.getMissCountByUserId(req.user.id),
   });
 });
@@ -67,11 +67,12 @@ router.delete('/:channelId/users', async (req, res) => {
 
 router.get('/:channelId/threads', async (req, res) => {
   const { channelId } = req.params;
-  const { limit, offset, status, isMiss, title, sort } = req.query;
+  const { limit, nextCursor, status, isMiss, title, sort: sortCondition } = req.query;
   const channel = await db.Channel.findByPk(channelId);
   if (!channel) res.status(404).send('Can not find channel');
 
   let where = {};
+
   if (title) {
     where = {
       ...where,
@@ -84,35 +85,93 @@ router.get('/:channelId/threads', async (req, res) => {
       ],
     };
   }
-  if (isMiss === 'true') where = { ...where, missCount: { [Op.gt]: 0 } };
-  let order = [['updatedAt', 'desc']];
 
-  if (sort) {
-    order = [];
-    const sortCondition = sort.split(',');
-    sortCondition.forEach((element) => {
-      const [field, atr] = element.split('_');
-      order.push([field, atr]);
-    });
+  if (status) where = { ...where, status };
+  if (isMiss === 'true') where = { ...where, missCount: { [Op.gt]: 0 } };
+
+  let orders = [
+    ['updatedAt', 'desc'],
+    ['id', 'desc'],
+  ];
+
+  if (sortCondition) {
+    orders = _.unionBy(
+      [...sortCondition.map(JSON.parse).filter((order) => order[0] !== 'id'), ...orders],
+      (item) => item[0],
+    );
   }
 
-  let [count, threads] = await Promise.all([
-    channel.countThreads({ where, order }),
-    channel.getThreads({ raw: true, where, order, limit, offset }),
-  ]);
+  // NOTE format [updateAt, asc]
+  const updatedAtSort = orders.find((order) => order[0] === 'updatedAt');
+  const { isBroadcast } = channel.configs;
+  let user;
+  if (!isBroadcast) {
+    user = await db.User.findByPk(req.user.id);
+    where = { ...where, channelId: channel.id };
+  }
+  const whereCount = { ...where };
+
+  // NOTE decode cursor
+  if (nextCursor) {
+    const lastThread = Buffer.from(nextCursor, 'base64').toString('utf8');
+    const { id: minId, updatedAt: minUpdatedAt } = JSON.parse(lastThread);
+
+    where = {
+      ...where,
+      [Op.or]: [
+        {
+          updatedAt: {
+            [updatedAtSort[1] === 'desc' ? Op.lt : Op.gt]: minUpdatedAt,
+          },
+        },
+        {
+          updatedAt: {
+            [Op.eq]: minUpdatedAt,
+          },
+          id: {
+            [Op.lt]: minId,
+          },
+        },
+      ],
+    };
+  }
+
+  let [count, threads] = isBroadcast
+    ? await Promise.all([
+        channel.countThreads({ where: whereCount }),
+        channel.getThreads({ where, order: orders, limit }),
+      ])
+    : await Promise.all([
+        user.countThreadsServing({ where: whereCount }),
+        user.getThreadsServing({ where, order: orders, limit }),
+      ]);
 
   threads = await Promise.all(
     threads.map(async (thread) => {
+      if (!thread.lastMsgId) return thread;
       const lastMessage = await db.Message.findOne({
-        raw: true,
         where: { mid: thread.lastMsgId, threadId: thread.id },
       });
       const { dataValues: customer } = await db.Customer.findByPk(lastMessage.customerId);
-      return { ...thread, lastMessage: { ...lastMessage, customer } };
+
+      lastMessage.dataValues.customer = customer;
+      thread.dataValues.lastMessage = lastMessage;
+      return thread;
     }),
   );
 
-  return res.json({ count, data: threads });
+  if (threads.length === 0) {
+    return res.json({ count, data: threads });
+  }
+
+  // NOTE create cursorbase
+  const lastThread = threads[threads.length - 1];
+
+  const encodeNextCursor = Buffer.from(JSON.stringify({ updatedAt: lastThread.updatedAt, id: lastThread.id })).toString(
+    'base64',
+  );
+
+  return res.json({ count, data: threads, nextCursor: encodeNextCursor });
 });
 
 export default router;

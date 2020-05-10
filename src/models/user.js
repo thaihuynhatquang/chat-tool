@@ -53,6 +53,10 @@ module.exports = (sequelize, DataTypes) => {
     },
     {
       tableName: 'users',
+      name: {
+        singular: 'user',
+        plural: 'users',
+      },
     },
   );
 
