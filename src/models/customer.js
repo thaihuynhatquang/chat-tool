@@ -57,5 +57,11 @@ module.exports = (sequelize, DataTypes) => {
     models.Customer.belongsTo(models.Channel);
   };
 
+  Customer.scopes = function(models) {
+    models.Customer.addScope('withNotesAndTags', {
+      include: [models.Note, models.Tag],
+    });
+  };
+
   return Customer;
 };

@@ -76,9 +76,11 @@ router.get('/:channelId/threads', async (req, res) => {
     where = {
       ...where,
       [Op.and]: [
-        db.Sequelize.where(db.Sequelize.fn('lower', db.Sequelize.col('title')), {
-          [Op.like]: '%' + title.toLowerCase() + '%',
-        }),
+        {
+          title: {
+            [Op.like]: `%${title}%`,
+          },
+        },
       ],
     };
   }

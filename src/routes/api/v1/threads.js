@@ -26,6 +26,7 @@ const upload = multer({
 
 const router = new Router();
 const Op = db.Sequelize.Op;
+const { sequelize } = db;
 
 const getLastMessage = async (thread) => {
   const lastMessage = await db.Message.findOne({
@@ -68,10 +69,29 @@ router.get('/:threadId/user-history', async (req, res) => {
 });
 
 router.get('/:threadId/customers', async (req, res) => {
-  const { limit, offset } = req.query;
+  const { name = '', limit, offset } = req.query;
   const thread = await db.Thread.findByPk(req.params.threadId);
   if (!thread) return res.status(404).send('Thread not found');
-  const [count, customers] = await Promise.all([thread.countCustomers(), thread.getCustomers({ limit, offset })]);
+  const channel = await thread.getChannel();
+  const condition = {
+    where: {
+      name: {
+        [Op.like]: `%${name}%`,
+      },
+      uniqueKey: {
+        [Op.ne]: channel.uniqueKey,
+      },
+    },
+  };
+  const [count, customers] = await Promise.all([
+    thread.countCustomers(condition),
+    thread.getCustomers({
+      ...condition,
+      scope: 'withNotesAndTags',
+      limit,
+      offset,
+    }),
+  ]);
   return res.json({ count, data: customers });
 });
 
@@ -100,6 +120,7 @@ router.get('/:threadId/messages', async (req, res) => {
   const { count, rows: messages } = await db.Message.findAndCountAll({
     raw: true,
     where: { threadId },
+    order: [['msgCreatedAt', 'DESC']],
     limit,
     offset,
   });

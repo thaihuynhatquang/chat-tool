@@ -27,6 +27,10 @@ module.exports = (sequelize, DataTypes) => {
     },
     {
       tableName: 'tags',
+      name: {
+        singular: 'tag',
+        plural: 'tags',
+      },
     },
   );
 

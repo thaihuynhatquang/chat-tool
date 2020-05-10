@@ -24,6 +24,10 @@ module.exports = (sequelize, DataTypes) => {
     },
     {
       tableName: 'notes',
+      name: {
+        singular: 'note',
+        plural: 'notes',
+      },
     },
   );
 

@@ -2,10 +2,15 @@ import { Router } from 'express';
 import db from 'models';
 
 const router = new Router();
+const { Op } = db.Sequelize;
 
 router.get('/', async (req, res) => {
-  const { limit, offset } = req.query;
-  const { rows: tags, count } = await db.Tag.findAndCountAll({ limit, offset });
+  const { content = '', limit, offset } = req.query;
+  const { rows: tags, count } = await db.Tag.findAndCountAll({
+    where: { content: { [Op.like]: `%${content}%` } },
+    limit,
+    offset,
+  });
   return res.json({ count, data: tags });
 });
 

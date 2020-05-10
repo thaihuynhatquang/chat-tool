@@ -1,6 +1,7 @@
 import { getRoomName } from 'utils/common';
 import db from 'models';
 import client from 'config/redis';
+import moment from 'moment';
 import { socketsJoinRoom, emitNewMessage } from 'utils/socket';
 import { CHANNEL_SOCKET_KEY, THREAD_SOCKET_KEY } from 'constants';
 const debug = require('debug')('app:im:interface');
@@ -30,6 +31,10 @@ class InstantMessage {
     const { thread } = await threadPromise;
     const formatedMessage = await this.getFormattedMessage(message, thread, customer);
     const [savedMessage] = await Promise.all([db.Message.create(formatedMessage), thread.addCustomer(customer)]);
+
+    // TODO: Add customer to message in better way
+    savedMessage.dataValues.customer = customer;
+    // TODO: Change msgCreatedAt + updatedAt + deletedAt to client correctly
 
     client.delAsync(savedMessage.mid);
 

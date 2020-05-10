@@ -58,7 +58,7 @@ class Messenger extends InstantMessage {
       customerId: customer.id,
       isVerified: senderId === this.channel.uniqueKey,
       content: text,
-      userId,
+      userId: userId && parseInt(userId),
       additionData,
       msgCreatedAt,
       msgUpdatedAt: msgCreatedAt,
@@ -169,7 +169,11 @@ class Messenger extends InstantMessage {
     }
     const result = await sendMessenger(formData, this.accessToken);
 
-    if (result.success) client.set(result.response.message_id.slice(2), userId);
+    // TODO: Better slice
+    if (result.success) {
+      result.response.message_id = result.response.message_id.slice(2);
+    }
+    if (result.success) client.set(result.response.message_id, userId);
 
     return result;
   };

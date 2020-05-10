@@ -1,4 +1,4 @@
-const Sequelize = require('sequelize')
+const Sequelize = require('sequelize');
 
 module.exports = {
   host: 'mysql',
@@ -12,9 +12,9 @@ module.exports = {
   logging: false,
   define: {
     charset: 'utf8mb4',
-    collate: 'utf8mb4_bin',
+    collate: 'utf8mb4_general_ci',
     timestamps: false,
     underscored: true,
-    freezeTableName: true
-  }
-}
+    freezeTableName: true,
+  },
+};
