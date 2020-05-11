@@ -1,9 +1,8 @@
 import { DEFAULT_LIMIT, MAX_LIMIT } from 'constants';
 
 export default (req, res, next) => {
-  let { limit, offset } = req.query;
-  limit = parseInt(limit) || DEFAULT_LIMIT;
-  req.query.limit = limit > MAX_LIMIT ? MAX_LIMIT : limit;
-  req.query.offset = parseInt(offset) || 0;
+  const { limit = DEFAULT_LIMIT, offset = 0 } = req.query;
+  req.query.limit = Math.min(parseInt(limit), MAX_LIMIT);
+  req.query.offset = parseInt(offset);
   next();
 };

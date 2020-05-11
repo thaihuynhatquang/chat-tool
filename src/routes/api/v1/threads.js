@@ -106,17 +106,66 @@ router.put('/:threadId/status', async (req, res) => {
 });
 
 router.get('/:threadId/messages', async (req, res) => {
-  const { limit, offset } = req.query;
+  const { limit, nextCursor } = req.query;
   const { threadId } = req.params;
-  const { count, rows: messages } = await db.Message.findAndCountAll({
-    raw: true,
+
+  let where = { threadId };
+  if (nextCursor) {
+    // NOTE: decode cursor base
+    const lastMessage = Buffer.from(nextCursor, 'base64').toString('utf8');
+    const { mid: minId, msgCreatedAt: minMsgCreatedAt } = JSON.parse(lastMessage);
+    where = {
+      ...where,
+      [Op.or]: [
+        {
+          msgCreatedAt: {
+            [Op.lt]: minMsgCreatedAt,
+          },
+        },
+        {
+          msgCreatedAt: {
+            [Op.eq]: minMsgCreatedAt,
+          },
+          mid: {
+            [Op.lt]: minId,
+          },
+        },
+      ],
+    };
+  }
+
+  const count = await db.Message.count({
     where: { threadId },
-    order: [['msgCreatedAt', 'DESC']],
+  });
+  const messages = await db.Message.findAll({
+    raw: true,
+    where,
+    order: [
+      ['msgCreatedAt', 'DESC'],
+      ['mid', 'DESC'],
+    ],
     limit,
-    offset,
   });
 
-  return res.json({ count, data: await messagesWithCustomerAndUser(messages) });
+  if (messages.length === 0) {
+    return res.json({ count, data: messages });
+  }
+
+  // NOTE: Create cursor base
+  const lastMessage = messages[messages.length - 1];
+
+  const encodeNextCursor = Buffer.from(
+    JSON.stringify({
+      msgCreatedAt: lastMessage.msgCreatedAt,
+      mid: lastMessage.mid,
+    }),
+  ).toString('base64');
+
+  return res.json({
+    count,
+    data: await messagesWithCustomerAndUser(messages),
+    nextCursor: encodeNextCursor,
+  });
 });
 
 router.post('/:threadId/messages', upload.single('attachment'), async (req, res) => {

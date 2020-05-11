@@ -12,8 +12,9 @@ const authorize = async (req, res, next) => {
     const user = await checkAuth(accessToken);
     req.user = user;
     next();
-  } catch (error) {
-    res.sendStatus(401);
+  } catch (err) {
+    // TODO: Logging error here
+    return res.sendStatus(401);
   }
 };
 
