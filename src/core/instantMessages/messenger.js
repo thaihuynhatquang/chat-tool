@@ -3,12 +3,14 @@ import fs from 'fs';
 import db from 'models';
 import InstantMessage from './interface';
 import Bootbot from 'bootbot';
-import { nullIfEmptyObj } from 'utils/common';
+import { nullIfEmptyObj, getRoomName } from 'utils/common';
 import { getUserProfileFB, sendMessenger } from 'utils/graph';
+import { emitThreadUpdateRead } from 'utils/socket';
 import { formatTime } from 'utils/time';
-import { THREAD_STATUS_UNREAD } from 'constants';
 import * as calculateInferenceField from '../triggers/calculateInferenceField';
 import client from 'config/redis';
+import { threadsWithLastMessage } from 'utils/db';
+import { THREAD_STATUS_UNREAD, CHANNEL_SOCKET_KEY, THREAD_SOCKET_KEY } from 'constants';
 
 const debug = require('debug')('app:im:messenger');
 
@@ -18,7 +20,6 @@ const getAttachmentType = (file) => {
   }
   return 'file';
 };
-
 class Messenger extends InstantMessage {
   constructor(channel, app) {
     super(channel, app);
@@ -134,7 +135,21 @@ class Messenger extends InstantMessage {
     const thread = await db.Thread.findOne({
       where: { channelId: this.channel.id, uniqueKey },
     });
-    return thread.update({ readAt: formatTime(message.timestamp) });
+    const updatedThread = await thread.update({
+      readAt: formatTime(message.timestamp),
+    });
+
+    const threadWithLastMessage = await threadsWithLastMessage(updatedThread);
+
+    const roomName = this.channel.configs.isBroadcast
+      ? getRoomName(CHANNEL_SOCKET_KEY, this.channel.id)
+      : getRoomName(THREAD_SOCKET_KEY, thread.id);
+
+    emitThreadUpdateRead(this.app.io, roomName, {
+      thread: threadWithLastMessage,
+    });
+
+    return updatedThread;
   };
 
   sendMessage = async (sendData) => {

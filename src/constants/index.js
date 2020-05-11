@@ -12,5 +12,6 @@ export const MESSENGER_CHANNEL_TYPE = 'messenger';
 //socket constant
 export const NEW_MESSAGE_EVENT = 'new-message';
 export const UPDATE_THREAD_STATUS_EVENT = 'update-thread-status';
+export const UPDATE_THREAD_READ_EVENT = 'update-thread-read';
 export const CHANNEL_SOCKET_KEY = 'channel';
 export const THREAD_SOCKET_KEY = 'thread';

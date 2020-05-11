@@ -1,6 +1,6 @@
 import client from 'config/redis';
 import { flatten } from 'utils/common';
-import { NEW_MESSAGE_EVENT, UPDATE_THREAD_STATUS_EVENT } from 'constants';
+import { NEW_MESSAGE_EVENT, UPDATE_THREAD_STATUS_EVENT, UPDATE_THREAD_READ_EVENT } from 'constants';
 
 export const getSocketIdsByUserId = async (userId) => {
   const socketIds = await client.lrangeAsync(userId, 0, -1);
@@ -40,4 +40,10 @@ export const emitThreadUpdateStatus = (io, roomName, data) => {
   io.of('/')
     .to(roomName)
     .emit(UPDATE_THREAD_STATUS_EVENT, data);
+};
+
+export const emitThreadUpdateRead = (io, roomName, data) => {
+  io.of('/')
+    .to(roomName)
+    .emit(UPDATE_THREAD_READ_EVENT, data);
 };
