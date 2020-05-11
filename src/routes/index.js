@@ -13,6 +13,6 @@ router.use('/webhook', webhook);
 
 router.use('/api', api);
 
-router.use('/auth', auth);
+// router.use('/auth', auth);
 
 export default router;

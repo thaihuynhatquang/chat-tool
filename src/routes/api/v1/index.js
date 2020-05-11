@@ -14,5 +14,6 @@ router.use('/customers', customers);
 router.use('/users', users);
 router.use('/tags', tags);
 router.use('/notes', notes);
+router.get('/me', (req, res) => res.json(req.user));
 
 export default router;

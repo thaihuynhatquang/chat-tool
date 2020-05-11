@@ -15,7 +15,7 @@ const safe = (func) => (req, res, next) => {
 };
 
 router.use(cors());
-// router.use(safe(authorize));
+router.use(safe(authorize));
 router.use(safe(handleLimitOffset));
 
 router.use('/v1', v1);
