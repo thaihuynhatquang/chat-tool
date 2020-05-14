@@ -137,7 +137,7 @@ router.get('/:channelId/threads', async (req, res) => {
     };
   }
 
-  let [count, threads] = isBroadcast
+  let [count, threads] = !isBroadcast
     ? await Promise.all([
         channel.countThreads({ where: whereCount }),
         channel.getThreads({ where, order: orders, limit }),
@@ -146,7 +146,7 @@ router.get('/:channelId/threads', async (req, res) => {
         user.countThreadsServing({ where: whereCount }),
         user.getThreadsServing({ where, order: orders, limit }),
       ]);
-
+  console.log(channel.getThreads());
   threads = await threadsWithLastMessage(threads);
 
   if (threads.length === 0) {

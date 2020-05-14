@@ -9,10 +9,10 @@ module.exports = (sequelize, DataTypes) => {
         primaryKey: true,
         type: DataTypes.INTEGER,
       },
-      iamId: {
+      googleId: {
         allowNull: false,
-        field: 'iam_id',
-        type: DataTypes.INTEGER,
+        field: 'google_id',
+        type: DataTypes.STRING,
       },
       name: {
         allowNull: false,

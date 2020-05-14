@@ -47,6 +47,7 @@ module.exports = {
         readAt: {
           field: 'read_at',
           type: 'TIMESTAMP',
+          defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
         },
         createdAt: {
           field: 'created_at',

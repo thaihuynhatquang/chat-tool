@@ -99,9 +99,10 @@ class Messenger extends InstantMessage {
     const customer = await db.Customer.findOne({
       where: { channelId: this.channel.id, uniqueKey },
     });
-
+    
     if (customer) return { customer, isCreated: false };
     const profile = await getUserProfileFB(uniqueKey, this.accessToken);
+    debug(profile);
     const cus = await db.Customer.create({
       channelId: this.channel.id,
       uniqueKey,
@@ -132,13 +133,15 @@ class Messenger extends InstantMessage {
     const {
       sender: { id: uniqueKey },
     } = message;
+
     const thread = await db.Thread.findOne({
       where: { channelId: this.channel.id, uniqueKey },
     });
+    debug('thread', thread);
     const updatedThread = await thread.update({
       readAt: formatTime(message.timestamp),
     });
-
+    debug('updatedThread', updatedThread);
     const threadWithLastMessage = await threadsWithLastMessage(updatedThread);
 
     const roomName = this.channel.configs.isBroadcast

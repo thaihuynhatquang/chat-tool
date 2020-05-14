@@ -8,10 +8,10 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      iamId: {
+      googleId: {
         allowNull: false,
-        field: 'iam_id',
-        type: Sequelize.INTEGER,
+        field: 'google_id',
+        type: Sequelize.STRING(50),
       },
       name: {
         allowNull: false,

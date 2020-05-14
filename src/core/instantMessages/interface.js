@@ -31,9 +31,7 @@ class InstantMessage {
     const { thread } = await threadPromise;
     const formatedMessage = await this.getFormattedMessage(message, thread, customer);
     const [savedMessage] = await Promise.all([db.Message.create(formatedMessage), thread.addCustomer(customer)]);
-
     const savedMessageWithCustomerAndUser = await messagesWithCustomerAndUser(savedMessage.toJSON());
-
     client.delAsync(savedMessage.mid);
 
     this.triggerOnHandleMessage(savedMessageWithCustomerAndUser, thread);
