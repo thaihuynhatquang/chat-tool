@@ -9,8 +9,7 @@ import {
   THREAD_STATUS_DONE,
   CHANNEL_SOCKET_KEY,
 } from 'constants';
-
-import { getRoomName } from 'utils/common';
+import { getRoomName, getNextCursorMessage } from 'utils/common';
 import { threadsWithLastMessage, messagesWithCustomerAndUser } from 'utils/db';
 import { emitThreadUpdateStatus } from 'utils/socket';
 
@@ -28,15 +27,41 @@ const upload = multer({
 const router = new Router();
 const Op = db.Sequelize.Op;
 
+/**
+ * @api {get} /threads/:threadId 0. Get detail of a Thread
+ * @apiName GetThread
+ * @apiGroup Thread
+ * @apiVersion 1.0.0
+ * @apiParam {Number} threadId Thread unique ID
+ * @apiSuccess {Number} channelId id of channel which thread belong to
+ * @apiSuccess {String} uniqueKey Unique key with each thread (example: facebookId for facebook user)
+ * @apiSuccess {String} title Title of thread
+ * @apiSuccess {String} status Status of thread (UNREAD, PROCESSING, SPAM, DONE)
+ * @apiSuccess {String} lastMsgId mid of Message
+ * @apiSuccess {Number} missCount number of miss messages
+ * @apiSuccess {DataTime} missTime Time of recieve message which is not anwsered
+ * @apiSuccess {Object} additionData some extra information of channel
+ * @apiSuccess {Object} lastMessage detail of last message in thread
+ * @apiUse GetThreadResponse
+ */
 router.get('/:threadId', async (req, res) => {
   const { threadId } = req.params;
   const thread = await db.Thread.findByPk(threadId);
   if (!thread) return res.status(404).send('Can not find Thread');
-  const threadWithLastMessage = await threadsWithLastMessage(thread);
-  emitThreadUpdateStatus(req.io, getRoomName(CHANNEL_SOCKET_KEY, thread.channelId), { thread: threadWithLastMessage });
-  return res.json(threadWithLastMessage);
+  return res.json(await threadsWithLastMessage(thread));
 });
 
+/**
+ * @api {get} /threads/:threadId/user-serving 1. Get users who is serving in this thread
+ * @apiName GetThreadUserServing
+ * @apiGroup Thread
+ * @apiVersion 1.0.0
+ * @apiParam {Number} threadId Thread unique ID
+ * @apiUse LimitOffset
+ * @apiSuccess {Number} count total number of serving users
+ * @apiSuccess {Array[]} data List all serving users. See <a href="#api-User-GetUser">user detail</a>
+ * @apiUse GetThreadUserServingResponse
+ */
 router.get('/:threadId/user-serving', async (req, res) => {
   const { limit, offset } = req.query;
   const thread = await db.Thread.findByPk(req.params.threadId);
@@ -48,6 +73,17 @@ router.get('/:threadId/user-serving', async (req, res) => {
   return res.json({ count, data: usersServing });
 });
 
+/**
+ * @api {get} /threads/:threadId/user-history 2. Get users who is served in this thread
+ * @apiName GetThreadUserHistory
+ * @apiGroup Thread
+ * @apiVersion 1.0.0
+ * @apiParam {Number} threadId Thread unique ID
+ * @apiUse LimitOffset
+ * @apiSuccess {Number} count total number of history users
+ * @apiSuccess {Array[]} data List all serving users. See <a href="#api-User-GetUser">user detail</a>
+ * @apiUse GetThreadUserServingResponse
+ */
 router.get('/:threadId/user-history', async (req, res) => {
   const { limit, offset } = req.query;
   const thread = await db.Thread.findByPk(req.params.threadId);
@@ -59,6 +95,18 @@ router.get('/:threadId/user-history', async (req, res) => {
   return res.json({ count, data: usersHistory });
 });
 
+/**
+ * @api {get} /threads/:threadId/customer 3. Get list customer in thread
+ * @apiName GetThreadCustomer
+ * @apiGroup Thread
+ * @apiVersion 1.0.0
+ * @apiParam {Number} threadId Thread unique ID
+ * @apiParam {String} [name] String to filter customers by their name
+ * @apiUse LimitOffset
+ * @apiSuccess {Number} count total number of customers in thread
+ * @apiSuccess {Array[]} data List all customers. See <a href="#api-Customer-GetCustomer">customer detail</a>
+ * @apiUse GetCustomersResponse
+ */
 router.get('/:threadId/customers', async (req, res) => {
   const { name = '', limit, offset } = req.query;
   const thread = await db.Thread.findByPk(req.params.threadId);
@@ -86,6 +134,16 @@ router.get('/:threadId/customers', async (req, res) => {
   return res.json({ count, data: customers });
 });
 
+/**
+ * @api {put} /threads/:threadId/status 4. Update status of a thread
+ * @apiDescription Update status of a thread (unread, processing, done, spam) then broadcast thread instance to channel
+ * @apiName ChangeThreadStatus
+ * @apiGroup Thread
+ * @apiVersion 1.0.0
+ * @apiParam {Number} threadId Thread unique ID
+ * @apiParam {String} status Status of thread
+ * @apiSuccess {Object} Result See <a href="#api-Thread-GetThread">API get detail of thread</a>
+ */
 router.put('/:threadId/status', async (req, res) => {
   const { status } = req.body;
   const { threadId } = req.params;
@@ -100,16 +158,31 @@ router.put('/:threadId/status', async (req, res) => {
       where: { id: threadId },
     },
   );
-  const thread = await db.Thread.findOne({ raw: true, where: { id: threadId } });
-  thread.lastMessage = await getLastMessage(thread);
-  return res.json(thread);
+  const thread = await db.Thread.findOne({ where: { id: threadId } });
+  if (!thread) return res.status(404).send('Can not find Thread');
+  const threadWithLastMessage = await threadsWithLastMessage(thread);
+  emitThreadUpdateStatus(req.io, getRoomName(CHANNEL_SOCKET_KEY, thread.channelId), { thread: threadWithLastMessage });
+  return res.json(threadWithLastMessage);
 });
 
+/**
+ * @api {get} /threads/:threadId/messages 5. Get messages of a thread
+ * @apiName GetThreadMessages
+ * @apiGroup Thread
+ * @apiVersion 1.0.0
+ * @apiParam {Number} threadId id of thread
+ * @apiParam {Number} [limit] limit number of result
+ * @apiParam {String} [nextCursor] cursor base
+ * @apiSuccess {Number} count Total number of messages
+ * @apiSuccess {Array[]} data List all messages
+ * @apiSuccess {String} nextCursor cursor base to get next massge
+ * @apiUse GetThreadMessagesResponse
+ */
 router.get('/:threadId/messages', async (req, res) => {
   const { limit, nextCursor } = req.query;
   const { threadId } = req.params;
 
-  let where = { threadId };
+  let where = { threadId, parentId: null };
   if (nextCursor) {
     // NOTE: decode cursor base
     const lastMessage = Buffer.from(nextCursor, 'base64').toString('utf8');
@@ -134,40 +207,177 @@ router.get('/:threadId/messages', async (req, res) => {
     };
   }
 
-  const count = await db.Message.count({
-    where: { threadId },
-  });
-  const messages = await db.Message.findAll({
-    raw: true,
-    where,
-    order: [
-      ['msgCreatedAt', 'DESC'],
-      ['mid', 'DESC'],
-    ],
-    limit,
-  });
-
-  if (messages.length === 0) {
-    return res.json({ count, data: messages });
-  }
-
-  // NOTE: Create cursor base
-  const lastMessage = messages[messages.length - 1];
-
-  const encodeNextCursor = Buffer.from(
-    JSON.stringify({
-      msgCreatedAt: lastMessage.msgCreatedAt,
-      mid: lastMessage.mid,
+  const [count, messages] = await Promise.all([
+    db.Message.count({
+      where: { threadId, parentId: null },
     }),
-  ).toString('base64');
+    db.Message.findAll({
+      raw: true,
+      where,
+      order: [
+        ['msgCreatedAt', 'DESC'],
+        ['mid', 'DESC'],
+      ],
+      limit,
+    }),
+  ]);
+
+  const mids = messages.map((msg) => msg.mid);
+
+  const [countReplies, msgReplies] = await Promise.all([
+    db.sequelize.query(
+      `SELECT
+        parent_id as parentId, COUNT(*) as count
+      FROM messages
+      WHERE
+        parent_id IN (:mids)
+        AND thread_id = :threadId
+      GROUP BY parent_id`,
+      {
+        replacements: {
+          threadId,
+          mids,
+        },
+        type: db.sequelize.QueryTypes.SELECT,
+      },
+    ),
+
+    // Thank to Ivan Akimov: https://github.com/sequelize/sequelize/issues/9725
+    db.sequelize.transaction(async (transaction) => {
+      await db.sequelize.set({ message_rank: 0, current_mid: null }, { transaction });
+      return db.sequelize.query(
+        `SELECT
+          mid,
+          thread_id AS threadId,
+          customer_id AS customerId,
+          is_verified AS isVerified,
+          user_id AS userId,
+          parent_id AS parentId,
+          processed,
+          content,
+          addition_data AS additionData,
+          msg_created_at AS msgCreatedAt,
+          msg_updated_at AS msgUpdatedAt,
+          msg_deleted_at AS msgDeletedAt
+        FROM
+            (SELECT
+                *,
+                @message_rank:=IF(@current_mid = parent_id, @message_rank + 1, 1) AS message_rank,
+                @current_mid:=parent_id
+            FROM
+                messages
+            WHERE
+                parent_id IN (:mids) and thread_id = :threadId
+            ORDER BY parent_id, msg_created_at DESC, mid DESC) ranked
+        WHERE
+            message_rank <= 5`,
+        {
+          replacements: { mids, threadId },
+          transaction,
+          type: db.sequelize.QueryTypes.SELECT,
+        },
+      );
+    }),
+  ]);
+
+  const replies = await messagesWithCustomerAndUser(msgReplies);
+  const msgWithReplies = messages.map((msg) => {
+    const repliesMsg = replies.filter((reply) => reply.parentId === msg.mid);
+    const countRepMsg = countReplies.find((countRep) => countRep.parentId === msg.mid);
+    const count = countRepMsg ? countRepMsg.count : 0;
+    msg.replies =
+      repliesMsg.length !== 0
+        ? {
+            count,
+            data: repliesMsg,
+            nextCursor: getNextCursorMessage(repliesMsg),
+          }
+        : null;
+    return msg;
+  });
 
   return res.json({
     count,
-    data: await messagesWithCustomerAndUser(messages),
-    nextCursor: encodeNextCursor,
+    data: await messagesWithCustomerAndUser(msgWithReplies),
+    nextCursor: getNextCursorMessage(messages),
   });
 });
 
+/**
+ * @api {get} /threads/:threadId/messages/:mid 6. Get replies of messages
+ * @apiName GetReplyMessages
+ * @apiGroup Thread
+ * @apiVersion 1.0.0
+ * @apiParam {Number} threadId Id of current Thread
+ * @apiParam {String} mid mid (message id) of message
+ * @apiParam {String} [nextCursor] cursor base
+ * @apiParam {Number} [limit] limit result. Default: 10
+ * @apiSuccess {Number} count total replies message
+ * @apiSuccess {Object} data replies message
+ * @apiSuccess {String} nextCursor cursor base to get next massge
+ * @apiUse GetThreadMessagesResponse
+ */
+router.get('/:threadId/messages/:mid', async (req, res) => {
+  const { mid, threadId } = req.params;
+  const { limit, nextCursor } = req.query;
+  let where = { parentId: mid, threadId };
+  if (nextCursor) {
+    // Decode cursor base
+    const lastMessage = Buffer.from(nextCursor, 'base64').toString('utf8');
+    const { mid: minId, msgCreatedAt: minMsgCreatedAt } = JSON.parse(lastMessage);
+    where = {
+      ...where,
+      [Op.or]: [
+        {
+          msgCreatedAt: {
+            [Op.lt]: minMsgCreatedAt,
+          },
+        },
+        {
+          msgCreatedAt: {
+            [Op.eq]: minMsgCreatedAt,
+          },
+          mid: {
+            [Op.lt]: minId,
+          },
+        },
+      ],
+    };
+  }
+  const [count, replies] = await Promise.all([
+    db.Message.count({
+      where: { parentId: mid },
+    }),
+    db.Message.findAll({
+      where,
+      order: [
+        ['msgCreatedAt', 'DESC'],
+        ['mid', 'DESC'],
+      ],
+      limit,
+    }),
+  ]);
+
+  return res.json({
+    count,
+    data: replies,
+    nextCursor: getNextCursorMessage(replies),
+  });
+});
+
+/**
+ * @api {post} /threads/:threadId/messages 7. Send messages
+ * @apiName SendMessages
+ * @apiGroup Thread
+ * @apiVersion 1.0.0
+ * @apiParam {String} message Message content
+ * @apiParam {Number} threadId Id of current Thread
+ * @apiParam {String} [parentId] parent_id of comment
+ * @apiParam {File} attachment Attachment
+ * @apiSuccess {Boolean} success true if send message successfull, otherwise false
+ * @apiSuccess {Object} response Respone messages
+ * @apiUse SendMessagesResponse
+ */
 router.post('/:threadId/messages', upload.single('attachment'), async (req, res) => {
   const {
     file: attachment,

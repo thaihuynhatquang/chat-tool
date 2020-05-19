@@ -19,3 +19,14 @@ export const flatten = (array) => {
     return acc.concat(item);
   }, []);
 };
+
+export const getNextCursorMessage = (messages) => {
+  if (!messages || messages.length === 0) return null;
+  const lastMessage = messages[messages.length - 1];
+  return Buffer.from(
+    JSON.stringify({
+      msgCreatedAt: lastMessage.msgCreatedAt,
+      mid: lastMessage.mid,
+    }),
+  ).toString('base64');
+};

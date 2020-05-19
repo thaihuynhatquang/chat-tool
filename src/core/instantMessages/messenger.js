@@ -99,7 +99,7 @@ class Messenger extends InstantMessage {
     const customer = await db.Customer.findOne({
       where: { channelId: this.channel.id, uniqueKey },
     });
-    
+
     if (customer) return { customer, isCreated: false };
     const profile = await getUserProfileFB(uniqueKey, this.accessToken);
     debug(profile);
@@ -118,7 +118,8 @@ class Messenger extends InstantMessage {
     const oldMissCount = thread.missCount;
     await calculateInferenceField.oneLevel(savedMessage, thread);
     const missCountChange = thread.missCount - oldMissCount;
-    this.emitSocketNewMessage(savedMessage, thread, missCountChange);
+    const updatedThread = await db.Thread.findByPk(thread.id);
+    this.emitSocketNewMessage(savedMessage, updatedThread, missCountChange);
   };
 
   onEvent = async (event) => {
