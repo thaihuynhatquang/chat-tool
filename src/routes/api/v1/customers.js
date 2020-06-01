@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from 'models';
+import asyncMiddleware from 'routes/middlewares/asyncMiddleware';
 
 const router = new Router();
 
@@ -13,15 +14,18 @@ const router = new Router();
  * @apiSuccess {Array[]} data List all customers.<br/>See <a href="#api-Customer-GetCustomer">Customer detail</a>
  * @apiUse GetCustomersResponse
  */
-router.get('/', async (req, res) => {
-  const { limit, offset } = req.query;
-  const { count, rows: customers } = await db.Customer.findAndCountAll({
-    raw: true,
-    limit,
-    offset,
-  });
-  return res.json({ count, data: customers });
-});
+router.get(
+  '/',
+  asyncMiddleware(async (req, res) => {
+    const { limit, offset } = req.query;
+    const { count, rows: customers } = await db.Customer.findAndCountAll({
+      raw: true,
+      limit,
+      offset,
+    });
+    return res.json({ count, data: customers });
+  }),
+);
 
 /**
  * @api {get} /customers/:customerId 1. Get detail of a Customer
@@ -37,12 +41,15 @@ router.get('/', async (req, res) => {
  * @apiSuccess {Object} additionData Some extra infomation of the customer (avatarUrl,...)
  * @apiUse GetCustomerResponse
  */
-router.get('/:customerId', async (req, res) => {
-  const { customerId } = req.params;
-  const customer = await db.Customer.findByPk(customerId);
-  if (!customer) return res.status(404).send('Can not find customer');
-  return res.json(customer);
-});
+router.get(
+  '/:customerId',
+  asyncMiddleware(async (req, res) => {
+    const { customerId } = req.params;
+    const customer = await db.Customer.findByPk(customerId);
+    if (!customer) return res.status(404).send('Can not find customer');
+    return res.json(customer);
+  }),
+);
 
 /**
  * @api {get} /customers/:customerId/tags 3. Get all tags of a Customer
@@ -55,13 +62,16 @@ router.get('/:customerId', async (req, res) => {
  * @apiSuccess {Array[]} data List all tags of a customer.<br/>See <a href="#api-Tag-GetTag">Tag detail</a>
  * @apiUse GetCustomerTagResponse
  */
-router.get('/:customerId/tags', async (req, res) => {
-  const { limit, offset } = req.query;
-  const customer = await db.Customer.findByPk(req.params.customerId);
-  if (!customer) return res.status(404).send('Can not find customer');
-  const [count, tags] = await Promise.all([customer.countTags(), customer.getTags({ limit, offset })]);
-  return res.json({ count, data: tags });
-});
+router.get(
+  '/:customerId/tags',
+  asyncMiddleware(async (req, res) => {
+    const { limit, offset } = req.query;
+    const customer = await db.Customer.findByPk(req.params.customerId);
+    if (!customer) return res.status(404).send('Can not find customer');
+    const [count, tags] = await Promise.all([customer.countTags(), customer.getTags({ limit, offset })]);
+    return res.json({ count, data: tags });
+  }),
+);
 
 /**
  * @api {get} /customers/:customerId/notes 6. Get all notes of a Customer
@@ -74,13 +84,16 @@ router.get('/:customerId/tags', async (req, res) => {
  * @apiSuccess {Array} data List all notes of a customer
  * @apiUse GetCustomerNoteResponse
  */
-router.get('/:customerId/notes', async (req, res) => {
-  const { limit, offset } = req.query;
-  const customer = await db.Customer.findByPk(req.params.customerId);
-  if (!customer) return res.status(404).send('Can not find customer');
-  const [count, notes] = await Promise.all([customer.countNotes(), customer.getNotes({ limit, offset })]);
-  return res.json({ count, data: notes });
-});
+router.get(
+  '/:customerId/notes',
+  asyncMiddleware(async (req, res) => {
+    const { limit, offset } = req.query;
+    const customer = await db.Customer.findByPk(req.params.customerId);
+    if (!customer) return res.status(404).send('Can not find customer');
+    const [count, notes] = await Promise.all([customer.countNotes(), customer.getNotes({ limit, offset })]);
+    return res.json({ count, data: notes });
+  }),
+);
 
 /**
  * @api {put} /customers/:customerId 2. Edit customer info
@@ -98,23 +111,26 @@ router.get('/:customerId/notes', async (req, res) => {
  * @apiSuccess {Object} additionData Some extra infomation of the customer (avatarUrl,...)
  * @apiUse EditCustomerResponse
  */
-router.put('/:customerId', async (req, res) => {
-  const { phone, name } = req.body;
-  const { customerId } = req.params;
-  const newInfo = !phone ? (!name ? null : { name }) : !name ? { phone } : { phone, name };
-  if (!newInfo) res.sendStatus(400);
-  await db.Customer.update(
-    {
-      ...newInfo,
-    },
-    {
-      where: { id: customerId },
-    },
-  );
-  const customer = await db.Customer.findByPk(customerId);
-  if (!customer) return res.status(404).send('Can not find customer');
-  return res.json(customer);
-});
+router.put(
+  '/:customerId',
+  asyncMiddleware(async (req, res) => {
+    const { phone, name } = req.body;
+    const { customerId } = req.params;
+    const newInfo = !phone ? (!name ? null : { name }) : !name ? { phone } : { phone, name };
+    if (!newInfo) res.sendStatus(400);
+    await db.Customer.update(
+      {
+        ...newInfo,
+      },
+      {
+        where: { id: customerId },
+      },
+    );
+    const customer = await db.Customer.findByPk(customerId);
+    if (!customer) return res.status(404).send('Can not find customer');
+    return res.json(customer);
+  }),
+);
 
 /**
  * @api {post} /customers/:customerId/tags 4. Add tag to a customer
@@ -128,16 +144,19 @@ router.put('/:customerId', async (req, res) => {
  * @apiSuccess {Number} tagId Id of tag which was added to customer
  * @apiUse AddCustomerTagResponse
  */
-router.post('/:customerId/tags', async (req, res) => {
-  const { tagId } = req.body;
-  const { id: creator } = req.user;
-  const [customer, tag] = await Promise.all([db.Customer.findByPk(req.params.customerId), db.Tag.findByPk(tagId)]);
-  if (!customer || !tag) {
-    return res.status(404).send('Can not find customer or tag');
-  }
-  await customer.addTag(tag, { through: { creator } });
-  return res.json({ creator, customerId: customer.id, tagId: tag.id });
-});
+router.post(
+  '/:customerId/tags',
+  asyncMiddleware(async (req, res) => {
+    const { tagId } = req.body;
+    const { id: creator } = req.user;
+    const [customer, tag] = await Promise.all([db.Customer.findByPk(req.params.customerId), db.Tag.findByPk(tagId)]);
+    if (!customer || !tag) {
+      return res.status(404).send('Can not find customer or tag');
+    }
+    await customer.addTag(tag, { through: { creator } });
+    return res.json({ creator, customerId: customer.id, tagId: tag.id });
+  }),
+);
 
 /**
  * @api {delete} /customers/:customerId/tags 5. Delete a tag customer
@@ -147,16 +166,19 @@ router.post('/:customerId/tags', async (req, res) => {
  * @apiParam {Number} customerId Customer unique ID
  * @apiParam {Number} tagId Id of the tag
  */
-router.delete('/:customerId/tags/:tagId', async (req, res) => {
-  const { tagId } = req.params;
-  const [customer, tag] = await Promise.all([db.Customer.findByPk(req.params.customerId), db.Tag.findByPk(tagId)]);
-  if (!customer || !tag) {
-    return res.status(404).send('Can not find customer or tag');
-  }
-  const numberEffect = await customer.removeTag(tag);
-  if (numberEffect === 0) res.status(404).send('Can not find tag');
-  return res.sendStatus(204);
-});
+router.delete(
+  '/:customerId/tags/:tagId',
+  asyncMiddleware(async (req, res) => {
+    const { tagId } = req.params;
+    const [customer, tag] = await Promise.all([db.Customer.findByPk(req.params.customerId), db.Tag.findByPk(tagId)]);
+    if (!customer || !tag) {
+      return res.status(404).send('Can not find customer or tag');
+    }
+    const numberEffect = await customer.removeTag(tag);
+    if (numberEffect === 0) res.status(404).send('Can not find tag');
+    return res.sendStatus(204);
+  }),
+);
 
 /**
  * @api {post} /customers/:customerId/notes 7. Add a new note for customer
@@ -170,18 +192,21 @@ router.delete('/:customerId/tags/:tagId', async (req, res) => {
  * @apiSuccess {Object} user info of creator. See <a href="#api-User-GetUser">user detail</a>
  * @apiUse AddCustomerNoteResponse
  */
-router.post('/:customerId/notes', async (req, res) => {
-  const { content } = req.body;
-  const { id: creator } = req.user;
-  const customer = await db.Customer.findByPk(req.params.customerId);
-  if (!customer) return res.status(404).send('Can not find customer');
-  const { id: noteId } = await customer.createNote({
-    content,
-    creator,
-  });
-  const note = await db.Note.scope('withUser').findByPk(noteId);
-  return res.json(note);
-});
+router.post(
+  '/:customerId/notes',
+  asyncMiddleware(async (req, res) => {
+    const { content } = req.body;
+    const { id: creator } = req.user;
+    const customer = await db.Customer.findByPk(req.params.customerId);
+    if (!customer) return res.status(404).send('Can not find customer');
+    const { id: noteId } = await customer.createNote({
+      content,
+      creator,
+    });
+    const note = await db.Note.scope('withUser').findByPk(noteId);
+    return res.json(note);
+  }),
+);
 
 /**
  * @api {put} /customers/:customerId/notes 8. Edit content of a note
@@ -193,19 +218,22 @@ router.post('/:customerId/notes', async (req, res) => {
  * @apiSuccess {Object} Result Same with <a href="#api-Customer-AddCustomerNote">add new note to customer</a>
  * @apiUse AddCustomerNoteResponse
  */
-router.put('/:customerId/notes/:noteId', async (req, res) => {
-  const { noteId } = req.params;
-  const { content } = req.body;
-  await db.Note.update(
-    { content },
-    {
-      where: { id: noteId },
-    },
-  );
-  const note = await db.Note.scope('withUser').findByPk(noteId);
-  if (!note) return res.status(404).send('Can not find note');
-  return res.json(note);
-});
+router.put(
+  '/:customerId/notes/:noteId',
+  asyncMiddleware(async (req, res) => {
+    const { noteId } = req.params;
+    const { content } = req.body;
+    await db.Note.update(
+      { content },
+      {
+        where: { id: noteId },
+      },
+    );
+    const note = await db.Note.scope('withUser').findByPk(noteId);
+    if (!note) return res.status(404).send('Can not find note');
+    return res.json(note);
+  }),
+);
 
 /**
  * @api {delete} /customers/:customerId/notes/:noteId 9. Delete a note customer
@@ -214,14 +242,17 @@ router.put('/:customerId/notes/:noteId', async (req, res) => {
  * @apiVersion 1.0.0
  * @apiParam {Number} id Id of the notes
  */
-router.delete('/:customerId/notes/:noteId', async (req, res) => {
-  const { noteId } = req.params;
-  const numberEffect = await db.Note.destroy({
-    where: { id: noteId },
-  });
+router.delete(
+  '/:customerId/notes/:noteId',
+  asyncMiddleware(async (req, res) => {
+    const { noteId } = req.params;
+    const numberEffect = await db.Note.destroy({
+      where: { id: noteId },
+    });
 
-  if (numberEffect === 0) res.status(404).send('Can not find note');
-  return res.sendStatus(204);
-});
+    if (numberEffect === 0) res.status(404).send('Can not find note');
+    return res.sendStatus(204);
+  }),
+);
 
 export default router;

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from 'models';
+import asyncMiddleware from 'routes/middlewares/asyncMiddleware';
 
 const router = new Router();
 const { Op } = db.Sequelize;
@@ -15,15 +16,18 @@ const { Op } = db.Sequelize;
  * @apiSuccess {Array[]} data List all tags. See <a href="#api-Tag-GetTag">tag detail</a>
  * @apiUse GetTagsResponse
  */
-router.get('/', async (req, res) => {
-  const { content = '', limit, offset } = req.query;
-  const { rows: tags, count } = await db.Tag.findAndCountAll({
-    where: { content: { [Op.like]: `%${content}%` } },
-    limit,
-    offset,
-  });
-  return res.json({ count, data: tags });
-});
+router.get(
+  '/',
+  asyncMiddleware(async (req, res) => {
+    const { content = '', limit, offset } = req.query;
+    const { rows: tags, count } = await db.Tag.findAndCountAll({
+      where: { content: { [Op.like]: `%${content}%` } },
+      limit,
+      offset,
+    });
+    return res.json({ count, data: tags });
+  }),
+);
 
 /**
  * @api {get} /tags/:tagId 1. Get detail of a tag
@@ -39,11 +43,14 @@ router.get('/', async (req, res) => {
  * @apiSuccess {DateTime} updatedAt updated time of this tag
  * @apiUse GetTagResponse
  */
-router.get('/:tagId', async (req, res) => {
-  const tag = await db.Tag.findByPk(req.params.tagId);
-  if (!tag) return res.status(404).send('Can not find Tag');
-  return res.json(tag);
-});
+router.get(
+  '/:tagId',
+  asyncMiddleware(async (req, res) => {
+    const tag = await db.Tag.findByPk(req.params.tagId);
+    if (!tag) return res.status(404).send('Can not find Tag');
+    return res.json(tag);
+  }),
+);
 
 /**
  * @api {get} /tags/:tagId/customers 4. Get list customer who have this tag
@@ -56,14 +63,17 @@ router.get('/:tagId', async (req, res) => {
  * @apiSuccess {Array[]} data List all customer who have this tag
  * @apiUse GetTagCustomerResponse
  */
-router.get('/:tagId/customers', async (req, res) => {
-  const { limit, offset } = req.query;
-  const tag = await db.Tag.findByPk(req.params.tagId);
-  if (!tag) return res.status(404).send('Can not find Tag');
-  const [count, customers] = await Promise.all([tag.countCustomers(), tag.getCustomers({ limit, offset })]);
+router.get(
+  '/:tagId/customers',
+  asyncMiddleware(async (req, res) => {
+    const { limit, offset } = req.query;
+    const tag = await db.Tag.findByPk(req.params.tagId);
+    if (!tag) return res.status(404).send('Can not find Tag');
+    const [count, customers] = await Promise.all([tag.countCustomers(), tag.getCustomers({ limit, offset })]);
 
-  return res.json({ count, data: customers });
-});
+    return res.json({ count, data: customers });
+  }),
+);
 
 /**
  * @api {post} /tags 2. Add a new tag
@@ -78,18 +88,21 @@ router.get('/:tagId/customers', async (req, res) => {
  * @apiSuccess {Number} creator if of user who created this tag
  * @apiUse AddTagResponse
  */
-router.post('/', async (req, res) => {
-  const { content, color } = req.body;
-  const {
-    user: { id: creator },
-  } = req;
-  const tag = await db.Tag.create({
-    content,
-    color,
-    creator,
-  });
-  return res.json(tag);
-});
+router.post(
+  '/',
+  asyncMiddleware(async (req, res) => {
+    const { content, color } = req.body;
+    const {
+      user: { id: creator },
+    } = req;
+    const tag = await db.Tag.create({
+      content,
+      color,
+      creator,
+    });
+    return res.json(tag);
+  }),
+);
 
 /**
  * @api {delete} /tags/:tagId 3. Delete a tag
@@ -98,9 +111,12 @@ router.post('/', async (req, res) => {
  * @apiVersion 1.0.0
  * @apiParam {Number} tagId Id of the tag
  */
-router.delete('/:tagId', async (req, res) => {
-  await db.Tag.destroy({ where: { id: req.params.tagId } });
-  return res.sendStatus(204);
-});
+router.delete(
+  '/:tagId',
+  asyncMiddleware(async (req, res) => {
+    await db.Tag.destroy({ where: { id: req.params.tagId } });
+    return res.sendStatus(204);
+  }),
+);
 
 export default router;

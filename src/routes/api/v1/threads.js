@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import startChannels from 'core/startChannels';
 import db from 'models';
+import asyncMiddleware from 'routes/middlewares/asyncMiddleware';
 import {
   THREAD_STATUS_UNREAD,
   THREAD_STATUS_PROCESSING,
@@ -44,12 +45,15 @@ const Op = db.Sequelize.Op;
  * @apiSuccess {Object} lastMessage detail of last message in thread
  * @apiUse GetThreadResponse
  */
-router.get('/:threadId', async (req, res) => {
-  const { threadId } = req.params;
-  const thread = await db.Thread.findByPk(threadId);
-  if (!thread) return res.status(404).send('Can not find Thread');
-  return res.json(await threadsWithLastMessage(thread));
-});
+router.get(
+  '/:threadId',
+  asyncMiddleware(async (req, res) => {
+    const { threadId } = req.params;
+    const thread = await db.Thread.findByPk(threadId);
+    if (!thread) return res.status(404).send('Can not find Thread');
+    return res.json(await threadsWithLastMessage(thread));
+  }),
+);
 
 /**
  * @api {get} /threads/:threadId/user-serving 1. Get users who is serving in this thread
@@ -62,16 +66,19 @@ router.get('/:threadId', async (req, res) => {
  * @apiSuccess {Array[]} data List all serving users. See <a href="#api-User-GetUser">user detail</a>
  * @apiUse GetThreadUserServingResponse
  */
-router.get('/:threadId/user-serving', async (req, res) => {
-  const { limit, offset } = req.query;
-  const thread = await db.Thread.findByPk(req.params.threadId);
-  if (!thread) return res.status(404).send('Thread not found');
-  const [count, usersServing] = await Promise.all([
-    thread.countUsersServing(),
-    thread.getUsersServing({ limit, offset }),
-  ]);
-  return res.json({ count, data: usersServing });
-});
+router.get(
+  '/:threadId/user-serving',
+  asyncMiddleware(async (req, res) => {
+    const { limit, offset } = req.query;
+    const thread = await db.Thread.findByPk(req.params.threadId);
+    if (!thread) return res.status(404).send('Thread not found');
+    const [count, usersServing] = await Promise.all([
+      thread.countUsersServing(),
+      thread.getUsersServing({ limit, offset }),
+    ]);
+    return res.json({ count, data: usersServing });
+  }),
+);
 
 /**
  * @api {get} /threads/:threadId/user-history 2. Get users who is served in this thread
@@ -84,16 +91,19 @@ router.get('/:threadId/user-serving', async (req, res) => {
  * @apiSuccess {Array[]} data List all serving users. See <a href="#api-User-GetUser">user detail</a>
  * @apiUse GetThreadUserServingResponse
  */
-router.get('/:threadId/user-history', async (req, res) => {
-  const { limit, offset } = req.query;
-  const thread = await db.Thread.findByPk(req.params.threadId);
-  if (!thread) return res.status(404).send('Thread not found');
-  const [count, usersHistory] = await Promise.all([
-    thread.countUsersServing(),
-    thread.getUsersHistory({ limit, offset }),
-  ]);
-  return res.json({ count, data: usersHistory });
-});
+router.get(
+  '/:threadId/user-history',
+  asyncMiddleware(async (req, res) => {
+    const { limit, offset } = req.query;
+    const thread = await db.Thread.findByPk(req.params.threadId);
+    if (!thread) return res.status(404).send('Thread not found');
+    const [count, usersHistory] = await Promise.all([
+      thread.countUsersServing(),
+      thread.getUsersHistory({ limit, offset }),
+    ]);
+    return res.json({ count, data: usersHistory });
+  }),
+);
 
 /**
  * @api {get} /threads/:threadId/customer 3. Get list customer in thread
@@ -107,32 +117,35 @@ router.get('/:threadId/user-history', async (req, res) => {
  * @apiSuccess {Array[]} data List all customers. See <a href="#api-Customer-GetCustomer">customer detail</a>
  * @apiUse GetCustomersResponse
  */
-router.get('/:threadId/customers', async (req, res) => {
-  const { name = '', limit, offset } = req.query;
-  const thread = await db.Thread.findByPk(req.params.threadId);
-  if (!thread) return res.status(404).send('Thread not found');
-  const channel = await thread.getChannel();
-  const condition = {
-    where: {
-      name: {
-        [Op.like]: `%${name}%`,
+router.get(
+  '/:threadId/customers',
+  asyncMiddleware(async (req, res) => {
+    const { name = '', limit, offset } = req.query;
+    const thread = await db.Thread.findByPk(req.params.threadId);
+    if (!thread) return res.status(404).send('Thread not found');
+    const channel = await thread.getChannel();
+    const condition = {
+      where: {
+        name: {
+          [Op.like]: `%${name}%`,
+        },
+        uniqueKey: {
+          [Op.ne]: channel.uniqueKey,
+        },
       },
-      uniqueKey: {
-        [Op.ne]: channel.uniqueKey,
-      },
-    },
-  };
-  const [count, customers] = await Promise.all([
-    thread.countCustomers(condition),
-    thread.getCustomers({
-      ...condition,
-      scope: 'withNotesAndTags',
-      limit,
-      offset,
-    }),
-  ]);
-  return res.json({ count, data: customers });
-});
+    };
+    const [count, customers] = await Promise.all([
+      thread.countCustomers(condition),
+      thread.getCustomers({
+        ...condition,
+        scope: 'withNotesAndTags',
+        limit,
+        offset,
+      }),
+    ]);
+    return res.json({ count, data: customers });
+  }),
+);
 
 /**
  * @api {put} /threads/:threadId/status 4. Update status of a thread
@@ -144,26 +157,31 @@ router.get('/:threadId/customers', async (req, res) => {
  * @apiParam {String} status Status of thread
  * @apiSuccess {Object} Result See <a href="#api-Thread-GetThread">API get detail of thread</a>
  */
-router.put('/:threadId/status', async (req, res) => {
-  const { status } = req.body;
-  const { threadId } = req.params;
-  if (![THREAD_STATUS_SPAM, THREAD_STATUS_DONE, THREAD_STATUS_PROCESSING, THREAD_STATUS_UNREAD].includes(status)) {
-    return res.status(400).send('Unknown status');
-  }
-  await db.Thread.update(
-    {
-      status,
-    },
-    {
-      where: { id: threadId },
-    },
-  );
-  const thread = await db.Thread.findOne({ where: { id: threadId } });
-  if (!thread) return res.status(404).send('Can not find Thread');
-  const threadWithLastMessage = await threadsWithLastMessage(thread);
-  emitThreadUpdateStatus(req.io, getRoomName(CHANNEL_SOCKET_KEY, thread.channelId), { thread: threadWithLastMessage });
-  return res.json(threadWithLastMessage);
-});
+router.put(
+  '/:threadId/status',
+  asyncMiddleware(async (req, res) => {
+    const { status } = req.body;
+    const { threadId } = req.params;
+    if (![THREAD_STATUS_SPAM, THREAD_STATUS_DONE, THREAD_STATUS_PROCESSING, THREAD_STATUS_UNREAD].includes(status)) {
+      return res.status(400).send('Unknown status');
+    }
+    await db.Thread.update(
+      {
+        status,
+      },
+      {
+        where: { id: threadId },
+      },
+    );
+    const thread = await db.Thread.findOne({ where: { id: threadId } });
+    if (!thread) return res.status(404).send('Can not find Thread');
+    const threadWithLastMessage = await threadsWithLastMessage(thread);
+    emitThreadUpdateStatus(req.io, getRoomName(CHANNEL_SOCKET_KEY, thread.channelId), {
+      thread: threadWithLastMessage,
+    });
+    return res.json(threadWithLastMessage);
+  }),
+);
 
 /**
  * @api {get} /threads/:threadId/messages 5. Get messages of a thread
@@ -178,130 +196,133 @@ router.put('/:threadId/status', async (req, res) => {
  * @apiSuccess {String} nextCursor cursor base to get next massge
  * @apiUse GetThreadMessagesResponse
  */
-router.get('/:threadId/messages', async (req, res) => {
-  const { limit, nextCursor } = req.query;
-  const { threadId } = req.params;
+router.get(
+  '/:threadId/messages',
+  asyncMiddleware(async (req, res) => {
+    const { limit, nextCursor } = req.query;
+    const { threadId } = req.params;
 
-  let where = { threadId, parentId: null };
-  if (nextCursor) {
-    // NOTE: decode cursor base
-    const lastMessage = Buffer.from(nextCursor, 'base64').toString('utf8');
-    const { mid: minId, msgCreatedAt: minMsgCreatedAt } = JSON.parse(lastMessage);
-    where = {
-      ...where,
-      [Op.or]: [
-        {
-          msgCreatedAt: {
-            [Op.lt]: minMsgCreatedAt,
+    let where = { threadId, parentId: null };
+    if (nextCursor) {
+      // NOTE: decode cursor base
+      const lastMessage = Buffer.from(nextCursor, 'base64').toString('utf8');
+      const { mid: minId, msgCreatedAt: minMsgCreatedAt } = JSON.parse(lastMessage);
+      where = {
+        ...where,
+        [Op.or]: [
+          {
+            msgCreatedAt: {
+              [Op.lt]: minMsgCreatedAt,
+            },
           },
-        },
-        {
-          msgCreatedAt: {
-            [Op.eq]: minMsgCreatedAt,
+          {
+            msgCreatedAt: {
+              [Op.eq]: minMsgCreatedAt,
+            },
+            mid: {
+              [Op.lt]: minId,
+            },
           },
-          mid: {
-            [Op.lt]: minId,
-          },
-        },
-      ],
-    };
-  }
+        ],
+      };
+    }
 
-  const [count, messages] = await Promise.all([
-    db.Message.count({
-      where: { threadId, parentId: null },
-    }),
-    db.Message.findAll({
-      raw: true,
-      where,
-      order: [
-        ['msgCreatedAt', 'DESC'],
-        ['mid', 'DESC'],
-      ],
-      limit,
-    }),
-  ]);
+    const [count, messages] = await Promise.all([
+      db.Message.count({
+        where: { threadId, parentId: null },
+      }),
+      db.Message.findAll({
+        raw: true,
+        where,
+        order: [
+          ['msgCreatedAt', 'DESC'],
+          ['mid', 'DESC'],
+        ],
+        limit,
+      }),
+    ]);
 
-  const mids = messages.map((msg) => msg.mid);
+    const mids = messages.map((msg) => msg.mid);
 
-  const [countReplies, msgReplies] = await Promise.all([
-    db.sequelize.query(
-      `SELECT
-        parent_id as parentId, COUNT(*) as count
-      FROM messages
-      WHERE
-        parent_id IN (:mids)
-        AND thread_id = :threadId
-      GROUP BY parent_id`,
-      {
-        replacements: {
-          threadId,
-          mids,
-        },
-        type: db.sequelize.QueryTypes.SELECT,
-      },
-    ),
-
-    // Thank to Ivan Akimov: https://github.com/sequelize/sequelize/issues/9725
-    db.sequelize.transaction(async (transaction) => {
-      await db.sequelize.set({ message_rank: 0, current_mid: null }, { transaction });
-      return db.sequelize.query(
+    const [countReplies, msgReplies] = await Promise.all([
+      db.sequelize.query(
         `SELECT
-          mid,
-          thread_id AS threadId,
-          customer_id AS customerId,
-          is_verified AS isVerified,
-          user_id AS userId,
-          parent_id AS parentId,
-          processed,
-          content,
-          addition_data AS additionData,
-          msg_created_at AS msgCreatedAt,
-          msg_updated_at AS msgUpdatedAt,
-          msg_deleted_at AS msgDeletedAt
-        FROM
-            (SELECT
-                *,
-                @message_rank:=IF(@current_mid = parent_id, @message_rank + 1, 1) AS message_rank,
-                @current_mid:=parent_id
-            FROM
-                messages
-            WHERE
-                parent_id IN (:mids) and thread_id = :threadId
-            ORDER BY parent_id, msg_created_at DESC, mid DESC) ranked
+          parent_id as parentId, COUNT(*) as count
+        FROM messages
         WHERE
-            message_rank <= 5`,
+          parent_id IN (:mids)
+          AND thread_id = :threadId
+        GROUP BY parent_id`,
         {
-          replacements: { mids, threadId },
-          transaction,
+          replacements: {
+            threadId,
+            mids,
+          },
           type: db.sequelize.QueryTypes.SELECT,
         },
-      );
-    }),
-  ]);
+      ),
 
-  const replies = await messagesWithCustomerAndUser(msgReplies);
-  const msgWithReplies = messages.map((msg) => {
-    const repliesMsg = replies.filter((reply) => reply.parentId === msg.mid);
-    const countRepMsg = countReplies.find((countRep) => countRep.parentId === msg.mid);
-    const count = countRepMsg ? countRepMsg.count : 0;
-    msg.replies =
-      repliesMsg.length !== 0
-        ? {
-            count,
-            data: repliesMsg,
-            nextCursor: getNextCursorMessage(repliesMsg),
-          }
-        : null;
-    return msg;
-  });
+      // Thank to Ivan Akimov: https://github.com/sequelize/sequelize/issues/9725
+      db.sequelize.transaction(async (transaction) => {
+        await db.sequelize.set({ message_rank: 0, current_mid: null }, { transaction });
+        return db.sequelize.query(
+          `SELECT
+              mid,
+              thread_id AS threadId,
+              customer_id AS customerId,
+              is_verified AS isVerified,
+              user_id AS userId,
+              parent_id AS parentId,
+              processed,
+              content,
+              addition_data AS additionData,
+              msg_created_at AS msgCreatedAt,
+              msg_updated_at AS msgUpdatedAt,
+              msg_deleted_at AS msgDeletedAt
+          FROM
+              (SELECT
+                  *,
+                  @message_rank:=IF(@current_mid = parent_id, @message_rank + 1, 1) AS message_rank,
+                  @current_mid:=parent_id
+              FROM
+                  messages
+              WHERE
+                  parent_id IN (:mids) and thread_id = :threadId
+              ORDER BY parent_id, msg_created_at DESC, mid DESC) ranked
+          WHERE
+              message_rank <= 5`,
+          {
+            replacements: { mids, threadId },
+            transaction,
+            type: db.sequelize.QueryTypes.SELECT,
+          },
+        );
+      }),
+    ]);
 
-  return res.json({
-    count,
-    data: await messagesWithCustomerAndUser(msgWithReplies),
-    nextCursor: getNextCursorMessage(messages),
-  });
-});
+    const replies = await messagesWithCustomerAndUser(msgReplies);
+    const msgWithReplies = messages.map((msg) => {
+      const repliesMsg = replies.filter((reply) => reply.parentId === msg.mid);
+      const countRepMsg = countReplies.find((countRep) => countRep.parentId === msg.mid);
+      const count = countRepMsg ? countRepMsg.count : 0;
+      msg.replies =
+        repliesMsg.length !== 0
+          ? {
+              count,
+              data: repliesMsg,
+              nextCursor: getNextCursorMessage(repliesMsg),
+            }
+          : null;
+      return msg;
+    });
+
+    return res.json({
+      count,
+      data: await messagesWithCustomerAndUser(msgWithReplies),
+      nextCursor: getNextCursorMessage(messages),
+    });
+  }),
+);
 
 /**
  * @api {get} /threads/:threadId/messages/:mid 6. Get replies of messages
@@ -317,53 +338,56 @@ router.get('/:threadId/messages', async (req, res) => {
  * @apiSuccess {String} nextCursor cursor base to get next massge
  * @apiUse GetThreadMessagesResponse
  */
-router.get('/:threadId/messages/:mid', async (req, res) => {
-  const { mid, threadId } = req.params;
-  const { limit, nextCursor } = req.query;
-  let where = { parentId: mid, threadId };
-  if (nextCursor) {
-    // Decode cursor base
-    const lastMessage = Buffer.from(nextCursor, 'base64').toString('utf8');
-    const { mid: minId, msgCreatedAt: minMsgCreatedAt } = JSON.parse(lastMessage);
-    where = {
-      ...where,
-      [Op.or]: [
-        {
-          msgCreatedAt: {
-            [Op.lt]: minMsgCreatedAt,
+router.get(
+  '/:threadId/messages/:mid',
+  asyncMiddleware(async (req, res) => {
+    const { mid, threadId } = req.params;
+    const { limit, nextCursor } = req.query;
+    let where = { parentId: mid, threadId };
+    if (nextCursor) {
+      // Decode cursor base
+      const lastMessage = Buffer.from(nextCursor, 'base64').toString('utf8');
+      const { mid: minId, msgCreatedAt: minMsgCreatedAt } = JSON.parse(lastMessage);
+      where = {
+        ...where,
+        [Op.or]: [
+          {
+            msgCreatedAt: {
+              [Op.lt]: minMsgCreatedAt,
+            },
           },
-        },
-        {
-          msgCreatedAt: {
-            [Op.eq]: minMsgCreatedAt,
+          {
+            msgCreatedAt: {
+              [Op.eq]: minMsgCreatedAt,
+            },
+            mid: {
+              [Op.lt]: minId,
+            },
           },
-          mid: {
-            [Op.lt]: minId,
-          },
-        },
-      ],
-    };
-  }
-  const [count, replies] = await Promise.all([
-    db.Message.count({
-      where: { parentId: mid },
-    }),
-    db.Message.findAll({
-      where,
-      order: [
-        ['msgCreatedAt', 'DESC'],
-        ['mid', 'DESC'],
-      ],
-      limit,
-    }),
-  ]);
+        ],
+      };
+    }
+    const [count, replies] = await Promise.all([
+      db.Message.count({
+        where: { parentId: mid },
+      }),
+      db.Message.findAll({
+        where,
+        order: [
+          ['msgCreatedAt', 'DESC'],
+          ['mid', 'DESC'],
+        ],
+        limit,
+      }),
+    ]);
 
-  return res.json({
-    count,
-    data: replies,
-    nextCursor: getNextCursorMessage(replies),
-  });
-});
+    return res.json({
+      count,
+      data: replies,
+      nextCursor: getNextCursorMessage(replies),
+    });
+  }),
+);
 
 /**
  * @api {post} /threads/:threadId/messages 7. Send messages
@@ -378,30 +402,34 @@ router.get('/:threadId/messages/:mid', async (req, res) => {
  * @apiSuccess {Object} response Respone messages
  * @apiUse SendMessagesResponse
  */
-router.post('/:threadId/messages', upload.single('attachment'), async (req, res) => {
-  const {
-    file: attachment,
-    body: { parentId, message },
-    params: { threadId },
-    user: { id: userId },
-  } = req;
+router.post(
+  '/:threadId/messages',
+  upload.single('attachment'),
+  asyncMiddleware(async (req, res) => {
+    const {
+      file: attachment,
+      body: { parentId, message },
+      params: { threadId },
+      user: { id: userId },
+    } = req;
 
-  const sendData = { attachment, userId, parentId, message };
-  if ((!attachment && !message) || !threadId) return res.sendStatus(400);
+    const sendData = { attachment, userId, parentId, message };
+    if ((!attachment && !message) || !threadId) return res.sendStatus(400);
 
-  const thread = await db.Thread.findByPk(threadId);
+    const thread = await db.Thread.findByPk(threadId);
 
-  if (!thread) return res.status(404).send('Thread not found');
+    if (!thread) return res.status(404).send('Thread not found');
 
-  const { type, uniqueKey } = await db.Channel.findByPk(thread.channelId);
+    const { type, uniqueKey } = await db.Channel.findByPk(thread.channelId);
 
-  sendData.target = thread.uniqueKey;
+    sendData.target = thread.uniqueKey;
 
-  const channels = await startChannels();
-  const result = await channels[type][uniqueKey].sendMessage(sendData);
+    const channels = await startChannels();
+    const result = await channels[type][uniqueKey].sendMessage(sendData);
 
-  if (!result.success) return res.status(400).json(result);
-  return res.status(200).json(result);
-});
+    if (!result.success) return res.status(400).json(result);
+    return res.status(200).json(result);
+  }),
+);
 
 export default router;

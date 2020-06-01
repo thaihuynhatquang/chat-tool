@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import cors from 'cors';
-import handleLimitOffset from './middleware/handleLimitOffset';
-import authorize from './middleware/authorize';
+import handleLimitOffset from 'routes/middlewares/handleLimitOffset';
+import authorize from 'routes/middlewares/authorize';
 import v1 from './v1';
 
 const router = new Router();

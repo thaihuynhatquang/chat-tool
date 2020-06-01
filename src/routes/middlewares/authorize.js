@@ -1,6 +1,7 @@
 import checkAuth from 'utils/authorize';
+import asyncMiddleware from 'routes/middlewares/asyncMiddleware';
 
-const authorize = async (req, res, next) => {
+const authorize = asyncMiddleware(async (req, res, next) => {
   try {
     const tokenPattern = 'Bearer ';
     const accessToken =
@@ -16,6 +17,6 @@ const authorize = async (req, res, next) => {
     // TODO: Logging error here
     return res.sendStatus(401);
   }
-};
+});
 
 export default authorize;

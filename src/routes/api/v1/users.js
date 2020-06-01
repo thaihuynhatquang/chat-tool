@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from 'models';
+import asyncMiddleware from 'routes/middlewares/asyncMiddleware';
 
 const router = new Router();
 
@@ -14,10 +15,13 @@ const router = new Router();
  * @apiSuccess {Array[]} data List all users. See <a href="#api-User-GetUser">user detail</a>
  * @apiUse GetUsersResponse
  */
-router.get('/', async (req, res) => {
-  const users = await db.User.findAndCountAll();
-  return res.json({ count: users.count, data: users.rows });
-});
+router.get(
+  '/',
+  asyncMiddleware(async (req, res) => {
+    const users = await db.User.findAndCountAll();
+    return res.json({ count: users.count, data: users.rows });
+  }),
+);
 
 /**
  * @api {get} /users/me 1. Get detail of current user
@@ -36,10 +40,13 @@ router.get('/', async (req, res) => {
  * @apiSuccess {DateTime} createdAt User updated time
  * @apiUse GetUserResponse
  */
-router.get('/me', async (req, res) => {
-  const user = await db.User.findByPk(req.user.id);
-  return res.json(user);
-});
+router.get(
+  '/me',
+  asyncMiddleware(async (req, res) => {
+    const user = await db.User.findByPk(req.user.id);
+    return res.json(user);
+  }),
+);
 
 /**
  * @api {get} /users/:userId 2. Get detail of a user
@@ -59,9 +66,12 @@ router.get('/me', async (req, res) => {
  * @apiSuccess {DateTime} createdAt User updated time
  * @apiUse GetUserResponse
  */
-router.get('/:userId', async (req, res) => {
-  const user = await db.User.findByPk(req.params.userId);
-  return res.json(user);
-});
+router.get(
+  '/:userId',
+  asyncMiddleware(async (req, res) => {
+    const user = await db.User.findByPk(req.params.userId);
+    return res.json(user);
+  }),
+);
 
 export default router;
