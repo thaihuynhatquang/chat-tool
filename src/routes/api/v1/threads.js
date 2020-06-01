@@ -244,6 +244,8 @@ router.get(
 
     const mids = messages.map((msg) => msg.mid);
 
+    if (mids.length === 0) return res.json({ count, data: messages });
+
     const [countReplies, msgReplies] = await Promise.all([
       db.sequelize.query(
         `SELECT
@@ -429,6 +431,95 @@ router.post(
 
     if (!result.success) return res.status(400).json(result);
     return res.status(200).json(result);
+  }),
+);
+
+/**
+ * @api {get} /threads/:threadId/attachments 8. Get attachments of a thread (by type)
+ * @apiDescription Get message include attachments data by one of these type: image | audio | video | file
+ * @apiName GetAttachments
+ * @apiGroup Thread
+ * @apiVersion 1.0.0
+ * @apiParam {Number} threadId Id of current Thread
+ * @apiParam {String} [type=image] type of attachments
+ * @apiParam {Number} [limit=100] limit number of return data
+ * @apiParam {String} [nextCursor] Cursor base
+ * @apiSuccess {Number} count Count number of messages which include attachment
+ * @apiSuccess {Array[]} data List of data response
+ * @apiUse GetAttachmentsResponse
+ */
+router.get(
+  '/:threadId/attachments',
+  asyncMiddleware(async (req, res) => {
+    const { threadId } = req.params;
+    const { type = 'image', limit, nextCursor } = req.query;
+
+    let minId = null;
+
+    let minMsgCreatedAt = new Date();
+
+    if (nextCursor) {
+      const lastMessage = Buffer.from(nextCursor, 'base64').toString('utf8');
+      const { mid, msgCreatedAt } = JSON.parse(lastMessage);
+      minId = mid;
+      minMsgCreatedAt = msgCreatedAt;
+    }
+
+    const nextCursorCondition = nextCursor
+      ? 'AND (msg_created_at < :minMsgCreatedAt OR (msg_created_at = :minMsgCreatedAt AND mid < :minId))'
+      : '';
+    const [countData, messages] = await Promise.all([
+      db.sequelize.query(
+        `SELECT COUNT(*) as count
+        FROM messages 
+        WHERE 
+          thread_id = :threadId
+          AND 
+          JSON_CONTAINS(addition_data->'$.attachments', JSON_OBJECT('type', :type)) = 1`,
+        {
+          replacements: { threadId, type },
+          type: db.sequelize.QueryTypes.SELECT,
+        },
+      ),
+      db.sequelize.query(
+        `SELECT mid, addition_data as additionData, msg_created_at as msgCreatedAt
+          FROM messages 
+          WHERE 
+              thread_id = :threadId
+            ${nextCursorCondition}
+            AND
+              msg_deleted_at IS NULL 
+            AND 
+              JSON_CONTAINS(addition_data->'$.attachments', JSON_OBJECT('type', :type)) = 1
+          ORDER BY msg_created_at DESC, mid DESC
+          LIMIT :limit`,
+        {
+          replacements: {
+            threadId,
+            type,
+            limit,
+            minMsgCreatedAt,
+            minId,
+          },
+          type: db.sequelize.QueryTypes.SELECT,
+        },
+      ),
+    ]);
+
+    const result = messages.map((msg) => {
+      const {
+        additionData: { attachments },
+      } = msg;
+      msg.additionData.attachments = attachments.filter((att) => att.type === type);
+      return msg;
+    });
+
+    const count = countData.length === 0 ? 0 : countData[0].count;
+    return res.json({
+      count,
+      data: result,
+      nextCursor: getNextCursorMessage(messages),
+    });
   }),
 );
 
