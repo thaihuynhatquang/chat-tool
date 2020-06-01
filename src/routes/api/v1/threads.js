@@ -312,7 +312,7 @@ router.get(
           ? {
               count,
               data: repliesMsg,
-              nextCursor: getNextCursorMessage(repliesMsg),
+              nextCursor: getNextCursorMessage(repliesMsg, limit),
             }
           : null;
       return msg;
@@ -321,7 +321,7 @@ router.get(
     return res.json({
       count,
       data: await messagesWithCustomerAndUser(msgWithReplies),
-      nextCursor: getNextCursorMessage(messages),
+      nextCursor: getNextCursorMessage(messages, limit),
     });
   }),
 );
@@ -386,7 +386,7 @@ router.get(
     return res.json({
       count,
       data: replies,
-      nextCursor: getNextCursorMessage(replies),
+      nextCursor: getNextCursorMessage(replies, limit),
     });
   }),
 );
@@ -518,7 +518,7 @@ router.get(
     return res.json({
       count,
       data: result,
-      nextCursor: getNextCursorMessage(messages),
+      nextCursor: getNextCursorMessage(messages, limit),
     });
   }),
 );

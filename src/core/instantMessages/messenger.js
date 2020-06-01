@@ -7,6 +7,7 @@ import { nullIfEmptyObj, getRoomName } from 'utils/common';
 import { getUserProfileFB, sendMessenger } from 'utils/graph';
 import { emitThreadUpdateRead } from 'utils/socket';
 import { formatTime } from 'utils/time';
+import signature from 'utils/signature';
 import * as calculateInferenceField from '../triggers/calculateInferenceField';
 import client from 'config/redis';
 import { threadsWithLastMessage } from 'utils/db';
@@ -14,13 +15,29 @@ import { THREAD_STATUS_UNREAD, CHANNEL_SOCKET_KEY, THREAD_SOCKET_KEY } from 'con
 
 const debug = require('debug')('app:im:messenger');
 
+/**
+ * Get type of Attachment file
+ * @param {Object} file
+ * @return {String}
+ */
 const getAttachmentType = (file) => {
   if (['audio', 'video', 'image'].includes(file.mimetype.split('/')[0])) {
     return file.mimetype.split('/')[0];
   }
   return 'file';
 };
+/**
+ * Messenger Instant Message which listen and send message from messenger.
+ *
+ * @extends {InstantMessage}
+ */
 class Messenger extends InstantMessage {
+  /**
+   * Constructor for Messenger Instant Message.
+   *
+   * @param {MessengerChannelType} channel
+   * @param {AppType} app For merging webhook routes into application routes
+   */
   constructor(channel, app) {
     super(channel, app);
     debug(`Init messenger channel ${channel.title}`);
@@ -40,6 +57,14 @@ class Messenger extends InstantMessage {
     });
   }
 
+  /**
+   * Get message which is formatted into one pre-defined form from Messenger message.
+   *
+   * @param {MessengerMessageType} message
+   * @param {ThreadType} thread
+   * @param {CustomerType} customer
+   * @return {MessageType}
+   */
   getFormattedMessage = async (message, thread, customer) => {
     const {
       message: { mid, text, attachments },
@@ -66,6 +91,12 @@ class Messenger extends InstantMessage {
     };
   };
 
+  /**
+   * Find the Thread which input message belongs to. If can not find thread, create one.
+   *
+   * @param {MessengerMessageType} message
+   * @return {ThreadType}
+   */
   getOrCreateThreadByMsg = async (message) => {
     const {
       sender: { id: senderId },
@@ -92,6 +123,12 @@ class Messenger extends InstantMessage {
     return { thread: thr, isCreated: true };
   };
 
+  /**
+   * Find the customer own the message. If can not find, create one.
+   *
+   * @param {MessengerMessageType} message
+   * @return {CustomerType}
+   */
   getOrCreateCustomerByMsg = async (message) => {
     const {
       sender: { id: uniqueKey },
@@ -102,7 +139,6 @@ class Messenger extends InstantMessage {
 
     if (customer) return { customer, isCreated: false };
     const profile = await getUserProfileFB(uniqueKey, this.accessToken);
-    debug(profile);
     const cus = await db.Customer.create({
       channelId: this.channel.id,
       uniqueKey,
@@ -122,6 +158,10 @@ class Messenger extends InstantMessage {
     this.emitSocketNewMessage(savedMessage, updatedThread, missCountChange);
   };
 
+  /**
+   * Navigate all event base on event.type
+   * @param {Object} event
+   */
   onEvent = async (event) => {
     debug(`Receive event:\n${JSON.stringify(event, null, 2)}`);
     switch (event.type) {
@@ -130,19 +170,21 @@ class Messenger extends InstantMessage {
     }
   };
 
+  /**
+   * Handle onRead event
+   * @param {Object} message
+   */
   onRead = async (message) => {
     const {
       sender: { id: uniqueKey },
     } = message;
-
     const thread = await db.Thread.findOne({
       where: { channelId: this.channel.id, uniqueKey },
     });
-    debug('thread', thread);
     const updatedThread = await thread.update({
       readAt: formatTime(message.timestamp),
     });
-    debug('updatedThread', updatedThread);
+
     const threadWithLastMessage = await threadsWithLastMessage(updatedThread);
 
     const roomName = this.channel.configs.isBroadcast
@@ -156,6 +198,10 @@ class Messenger extends InstantMessage {
     return updatedThread;
   };
 
+  /**
+   * Send message to facebook user
+   * @param {Object} sendData
+   */
   sendMessage = async (sendData) => {
     const { target: recipientId, message, attachment, userId } = sendData;
     debug(`send message to ${recipientId}\n${JSON.stringify(sendData, null, 2)}`);
@@ -163,7 +209,7 @@ class Messenger extends InstantMessage {
     if (message && attachment) {
       return {
         success: false,
-        response: 'You can only send text or attachment',
+        response: { message: 'You can only send text or attachment' },
       };
     }
 
@@ -199,3 +245,5 @@ class Messenger extends InstantMessage {
 }
 
 export default Messenger;
+MessengerMessageType
+CustomerType
