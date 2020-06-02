@@ -201,6 +201,7 @@ router.get(
   asyncMiddleware(async (req, res) => {
     const { limit, nextCursor } = req.query;
     const { threadId } = req.params;
+    const limitReplies = 5;
 
     let where = { threadId, parentId: null };
     if (nextCursor) {
@@ -292,9 +293,9 @@ router.get(
                   parent_id IN (:mids) and thread_id = :threadId
               ORDER BY parent_id, msg_created_at DESC, mid DESC) ranked
           WHERE
-              message_rank <= 5`,
+              message_rank <= :limitReplies`,
           {
-            replacements: { mids, threadId },
+            replacements: { mids, threadId, limitReplies },
             transaction,
             type: db.sequelize.QueryTypes.SELECT,
           },
@@ -312,7 +313,7 @@ router.get(
           ? {
               count,
               data: repliesMsg,
-              nextCursor: getNextCursorMessage(repliesMsg, limit),
+              nextCursor: getNextCursorMessage(repliesMsg, limitReplies),
             }
           : null;
       return msg;

@@ -7,7 +7,6 @@ import { nullIfEmptyObj, getRoomName } from 'utils/common';
 import { getUserProfileFB, sendMessenger } from 'utils/graph';
 import { emitThreadUpdateRead } from 'utils/socket';
 import { formatTime } from 'utils/time';
-import signature from 'utils/signature';
 import * as calculateInferenceField from '../triggers/calculateInferenceField';
 import client from 'config/redis';
 import { threadsWithLastMessage } from 'utils/db';
@@ -245,5 +244,3 @@ class Messenger extends InstantMessage {
 }
 
 export default Messenger;
-MessengerMessageType
-CustomerType
