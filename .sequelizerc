@@ -1,12 +1,9 @@
+require('dotenv').config()
 const path = require('path')
 
-const env = ['development', 'production', 'test'].includes(process.env.NODE_ENV)
-  ? process.env.NODE_ENV
-  : 'development'
-
 module.exports = {
-  'config': path.resolve('src', 'config', 'sequelize.js'),
+  'config': path.resolve('src', 'config', 'sequelize', 'hook.js'),
   'models-path': path.resolve('src', 'models'),
-  'seeders-path': path.resolve('src', 'database', 'seeders', env),
+  'seeders-path': path.resolve('src', 'database', 'seeders'),
   'migrations-path': path.resolve('src', 'database', 'migrations')
 }

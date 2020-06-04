@@ -1,7 +1,6 @@
-'use strict';
-module.exports = (sequelize, DataTypes) => {
+export default (sequelize, DataTypes) => {
   const ThreadInferenceData = sequelize.define(
-    'ThreadInferenceData',
+    "ThreadInferenceData",
     {
       id: {
         allowNull: false,
@@ -11,39 +10,38 @@ module.exports = (sequelize, DataTypes) => {
       },
       threadId: {
         allowNull: false,
-        field: 'thread_id',
+        field: "thread_id",
         type: DataTypes.INTEGER,
       },
       uniqueKey: {
         allowNull: false,
-        field: 'unique_key',
-        unique: true,
+        field: "unique_key",
         type: DataTypes.STRING,
       },
       missCount: {
-        field: 'miss_count',
+        field: "miss_count",
         type: DataTypes.INTEGER,
       },
       missTime: {
-        field: 'miss_time',
-        type: 'TIMESTAMP',
+        field: "miss_time",
+        type: "TIMESTAMP",
       },
       lastMsgId: {
-        field: 'last_msg_id',
+        field: "last_msg_id",
         type: DataTypes.STRING,
       },
       createdAt: {
-        field: 'created_at',
-        type: 'TIMESTAMP',
+        field: "created_at",
+        type: "TIMESTAMP",
       },
       updatedAt: {
-        field: 'updated_at',
-        type: 'TIMESTAMP',
+        field: "updated_at",
+        type: "TIMESTAMP",
       },
     },
     {
-      tableName: 'thread_inference_data',
-    },
+      tableName: "thread_inference_data",
+    }
   );
 
   return ThreadInferenceData;

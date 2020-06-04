@@ -1,7 +1,14 @@
-'use strict';
-module.exports = (sequelize, DataTypes) => {
+import {
+  PERMISSION_READ_ALL_THREADS,
+  THREAD_STATUS_PROCESSING,
+  THREAD_STATUS_UNREAD,
+} from "constants";
+import moment from "moment";
+import { checkUserPermission } from "utils/authorize";
+
+export default (sequelize, DataTypes) => {
   const Channel = sequelize.define(
-    'Channel',
+    "Channel",
     {
       id: {
         allowNull: false,
@@ -11,13 +18,11 @@ module.exports = (sequelize, DataTypes) => {
       },
       uniqueKey: {
         allowNull: false,
-        field: 'unique_key',
-        unique: 'compositeIndex',
+        field: "unique_key",
         type: DataTypes.STRING,
       },
       type: {
         allowNull: false,
-        unique: 'compositeIndex',
         type: DataTypes.STRING,
       },
       title: {
@@ -28,54 +33,126 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.JSON,
       },
       additionData: {
-        field: 'addition_data',
+        field: "addition_data",
         type: DataTypes.JSON,
       },
       createdAt: {
-        field: 'created_at',
-        type: 'TIMESTAMP',
+        field: "created_at",
+        type: "TIMESTAMP",
       },
       updatedAt: {
-        field: 'updated_at',
-        type: 'TIMESTAMP',
+        field: "updated_at",
+        type: "TIMESTAMP",
       },
     },
     {
-      tableName: 'channels',
-    },
+      tableName: "channels",
+      name: {
+        singular: "channel",
+        plural: "channels",
+      },
+    }
   );
 
   Channel.associate = function(models) {
     models.Channel.hasMany(models.Thread);
+    models.Channel.hasMany(models.Tag);
     models.Channel.belongsToMany(models.User, {
-      through: 'channel_user',
+      through: "ChannelUser",
     });
+    models.Channel.hasMany(models.Role);
+    models.Channel.hasOne(models.ToolBot);
   };
 
   Channel.getMissCountsByUserId = async function(userId) {
-    const missCountsByChannelIds = await sequelize.query(
-      `SELECT
-      threads.channel_id 'channelId',
-      SUM(threads.miss_count) 'missCount'
-      FROM
-        threads
-          INNER JOIN
-        channels ON channels.id = threads.channel_id
-      WHERE
-        JSON_EXTRACT(channels.configs, '$.isBroadcast') = TRUE or threads.id IN (SELECT
-          thread_id
-        FROM
-          thread_user_serving
-        WHERE
-          thread_user_serving.user_id = $userId)
-      GROUP BY threads.channel_id`,
-      { bind: { userId }, type: sequelize.QueryTypes.SELECT },
+    const channels = await this.findAll();
+    const missCountsByChannelIds = await Promise.all(
+      channels.map(async (channel) => {
+        const isUserBroadcast =
+          (await checkUserPermission(
+            userId,
+            PERMISSION_READ_ALL_THREADS,
+            channel.id
+          )) || channel.configs.isBroadcast;
+
+        const missCount = await sequelize.query(
+          `SELECT
+            SUM(threads.miss_count) 'missCount'
+          FROM
+          threads
+            LEFT JOIN
+            thread_user_serving ON thread_user_serving.thread_id = threads.id
+          WHERE
+            threads.channel_id = $channelId AND
+          ${
+            isUserBroadcast
+              ? `threads.status IN ('${THREAD_STATUS_UNREAD}', '${THREAD_STATUS_PROCESSING}')`
+              : `threads.status = '${THREAD_STATUS_PROCESSING}' AND thread_user_serving.user_id = $userId`
+          }`,
+          {
+            bind: { userId, channelId: channel.id },
+            type: sequelize.QueryTypes.SELECT,
+          }
+        );
+        return {
+          channelId: channel.id,
+          missCount: missCount.length > 0 ? missCount[0].missCount : 0,
+        };
+      })
     );
 
     return missCountsByChannelIds.reduce((acc, item) => {
       acc[item.channelId] = parseInt(item.missCount);
       return acc;
     }, {});
+  };
+
+  Channel.prototype.getUsersWithRolePermission = async function(
+    channelId,
+    limit,
+    offset
+  ) {
+    const db = this.sequelize.models;
+
+    return this.getUsers({
+      limit,
+      offset,
+      include: [
+        {
+          model: db.Role,
+          where: {
+            channelId,
+          },
+          // NOTE: must have because not return user if condition false
+          required: false,
+          include: [
+            {
+              model: db.Permission,
+              required: false,
+            },
+          ],
+        },
+      ],
+    });
+  };
+
+  Channel.prototype.isBroadcast = function() {
+    return this.configs && this.configs.isBroadcast;
+  };
+  Channel.prototype.isInWorkTime = function(_time = moment()) {
+    const time = _time.add(7, "hours");
+    const workTime = this.configs && this.configs.workTime;
+    const isInWorkTime = workTime.some((work) => {
+      const { start, end, week } = work;
+      if (
+        week[time.day()] &&
+        start <= time.format("HH:mm") &&
+        time.format("HH:mm") <= end
+      ) {
+        return true;
+      }
+    });
+    return isInWorkTime;
   };
 
   Channel.prototype.getMissCountByUserId = async function(userId) {
@@ -97,7 +174,7 @@ module.exports = (sequelize, DataTypes) => {
       {
         bind: { userId, channelId: this.id, isBroadcast },
         type: sequelize.QueryTypes.SELECT,
-      },
+      }
     );
     return parseInt(missCount) || 0;
   };

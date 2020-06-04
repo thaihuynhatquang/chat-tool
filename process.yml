@@ -1,0 +1,5 @@
+apps:
+  - script   : 'dist/bin/www.js'
+    name     : 'Chat-tool'
+    exec_mode: 'cluster'
+    instances: 4

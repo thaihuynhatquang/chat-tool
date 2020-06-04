@@ -1,15 +1,15 @@
-import { Router } from 'express';
-import api from 'routes/api';
-import webhook from 'routes/webhookFB';
+import { Router } from "express";
+import webhookFB from "routes/webhookFB";
+import api from "routes/api";
+import { loggingRequest } from "routes/middlewares/logging";
 
 const router = new Router();
 
-router.get('/health', async (req, res) => {
-  res.send('OK');
+router.get("/health", async (req, res) => {
+  res.send("OK");
 });
+router.use("/webhook-fb", loggingRequest, webhookFB);
 
-router.use('/webhook', webhook);
-
-router.use('/api', api);
+router.use("/api", api);
 
 export default router;

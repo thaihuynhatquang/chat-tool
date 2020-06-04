@@ -1,7 +1,6 @@
-'use strict';
-module.exports = (sequelize, DataTypes) => {
+export default (sequelize, DataTypes) => {
   const User = sequelize.define(
-    'User',
+    "User",
     {
       id: {
         allowNull: false,
@@ -9,9 +8,9 @@ module.exports = (sequelize, DataTypes) => {
         primaryKey: true,
         type: DataTypes.INTEGER,
       },
-      googleId: {
+      iamId: {
         allowNull: false,
-        field: 'google_id',
+        field: "iam_id",
         type: DataTypes.STRING,
       },
       name: {
@@ -29,11 +28,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATEONLY,
       },
       ssoId: {
-        field: 'sso_id',
+        field: "sso_id",
         type: DataTypes.STRING,
       },
       avatarUrl: {
-        field: 'avatar_url',
+        field: "avatar_url",
         type: DataTypes.TEXT,
       },
       department: {
@@ -42,36 +41,76 @@ module.exports = (sequelize, DataTypes) => {
       position: {
         type: DataTypes.STRING,
       },
+      lastLoginAt: {
+        field: "last_login_at",
+        type: "TIMESTAMPT",
+      },
       createdAt: {
-        field: 'created_at',
-        type: 'TIMESTAMP',
+        field: "created_at",
+        type: "TIMESTAMP",
       },
       updatedAt: {
-        field: 'updated_at',
-        type: 'TIMESTAMP',
+        field: "updated_at",
+        type: "TIMESTAMP",
       },
     },
     {
-      tableName: 'users',
+      tableName: "users",
       name: {
-        singular: 'user',
-        plural: 'users',
+        singular: "user",
+        plural: "users",
       },
-    },
+    }
   );
 
   User.associate = function(models) {
     models.User.belongsToMany(models.Channel, {
-      through: 'channel_user',
+      through: "ChannelUser",
     });
     models.User.belongsToMany(models.Thread, {
-      as: 'threadsServing',
-      through: 'thread_user_serving',
+      as: "threadsServing",
+      through: "thread_user_serving",
       updatedAt: false,
     });
     models.User.belongsToMany(models.Thread, {
-      as: 'threadsHistory',
-      through: 'thread_user_history',
+      as: "threadsHistory",
+      through: "thread_user_history",
+    });
+    models.User.belongsToMany(models.Role, {
+      through: "user_role",
+    });
+    models.User.hasMany(models.TransferThread, {
+      as: "receiveTransferThreads",
+      foreignKey: "toUserId",
+    });
+    models.User.hasMany(models.QuickReply);
+  };
+
+  User.scopes = function(models) {
+    models.User.addScope("withRoles", {
+      include: [
+        {
+          model: models.Role,
+          include: [models.Permission],
+        },
+      ],
+    });
+    models.User.addScope("withReceiveTransferThreads", {
+      include: [
+        {
+          required: false,
+          model: models.TransferThread,
+          as: "receiveTransferThreads",
+          where: { status: null },
+          include: [
+            models.Thread,
+            {
+              model: models.User,
+              as: "fromUser",
+            },
+          ],
+        },
+      ],
     });
   };
 

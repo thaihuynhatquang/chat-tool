@@ -1,51 +1,43 @@
-import FormData from 'form-data';
-import fs from 'fs';
-import db from 'models';
-import InstantMessage from './interface';
-import Bootbot from 'bootbot';
-import { nullIfEmptyObj, getRoomName } from 'utils/common';
-import { getUserProfileFB, sendMessenger } from 'utils/graph';
-import { emitThreadUpdateRead } from 'utils/socket';
-import { formatTime } from 'utils/time';
-import * as calculateInferenceField from '../triggers/calculateInferenceField';
-import client from 'config/redis';
-import { threadsWithLastMessage } from 'utils/db';
-import { THREAD_STATUS_UNREAD, CHANNEL_SOCKET_KEY, THREAD_SOCKET_KEY } from 'constants';
+import Bootbot from "bootbot";
+import client from "config/redis";
+import { THREAD_STATUS_UNREAD } from "constants";
+import triggerCheckCustomerPhone from "core/triggers/customerPhone";
+import fs from "fs";
+import {
+  getFormatedMessageId,
+  getParsable,
+  nullIfEmptyObj,
+} from "utils/common";
+import { formatTime } from "utils/time";
+import InstantMessage from "./interface";
 
-const debug = require('debug')('app:im:messenger');
+const debug = require("debug")("app:im:messenger");
 
-/**
- * Get type of Attachment file
- * @param {Object} file
- * @return {String}
- */
 const getAttachmentType = (file) => {
-  if (['audio', 'video', 'image'].includes(file.mimetype.split('/')[0])) {
-    return file.mimetype.split('/')[0];
+  if (["audio", "video", "image"].includes(file.mimetype.split("/")[0])) {
+    return file.mimetype.split("/")[0];
   }
-  return 'file';
+  return "file";
 };
-/**
- * Messenger Instant Message which listen and send message from messenger.
- *
- * @extends {InstantMessage}
- */
+
 class Messenger extends InstantMessage {
-  /**
-   * Constructor for Messenger Instant Message.
-   *
-   * @param {MessengerChannelType} channel
-   * @param {AppType} app For merging webhook routes into application routes
-   */
-  constructor(channel, app) {
-    super(channel, app);
+  appId;
+  channel;
+  accessToken;
+  bot;
+
+  constructor(channel) {
+    super(channel);
     debug(`Init messenger channel ${channel.title}`);
     let {
-      configs: { accessToken, verifyToken, appSecret, broadcastEchoes },
+      configs: { appId, accessToken, verifyToken, appSecret, broadcastEchoes },
     } = channel;
     if (!accessToken || !verifyToken || !appSecret) {
-      throw new Error('Require accessToken, verifyToken, appSecret to create Messenger IM');
+      throw new Error(
+        "Require accessToken, verifyToken, appSecret to create Messenger IM"
+      );
     }
+    this.appId = appId;
     this.channel = channel;
     this.accessToken = accessToken;
     this.bot = new Bootbot({
@@ -56,78 +48,135 @@ class Messenger extends InstantMessage {
     });
   }
 
-  /**
-   * Get message which is formatted into one pre-defined form from Messenger message.
-   *
-   * @param {MessengerMessageType} message
-   * @param {ThreadType} thread
-   * @param {CustomerType} customer
-   * @return {MessageType}
-   */
   getFormattedMessage = async (message, thread, customer) => {
     const {
-      message: { mid, text, attachments },
+      postback,
+      message: { mid, text, attachments, quick_reply: quickReply },
       sender: { id: senderId },
       timestamp,
     } = message;
     const additionData = nullIfEmptyObj({
-      ...(attachments && { attachments }),
+      attachments,
+      postback: postback && {
+        ...postback,
+        payload: postback.payload && getParsable(postback.payload),
+      },
+      quickReply: quickReply && {
+        ...quickReply,
+        payload: quickReply.payload && getParsable(quickReply.payload),
+      },
     });
+
     const msgCreatedAt = formatTime(timestamp);
 
-    const userId = await client.getAsync(mid);
+    const _userId = await client.getAsync(mid);
+    const mUserId = await client.getAsync(mid.substring(2));
+    const userId = _userId || mUserId;
+
+    const isVerified = senderId === this.channel.uniqueKey;
+    const reviewContext = await db.LogReview.findOne({
+      where: {
+        isEnd: false,
+        threadId: thread.id,
+      },
+    });
+
+    const hidden = isVerified
+      ? text
+        ? text.startsWith("[Tin nhắn tự động]")
+        : false
+      : !!reviewContext && !!text && !!text.match(/^★{1,5}$/);
 
     return {
       mid,
       threadId: thread.id,
       customerId: customer.id,
-      isVerified: senderId === this.channel.uniqueKey,
+      isVerified,
+      hidden,
       content: text,
-      userId: userId && parseInt(userId),
+      userId: userId ? parseInt(userId) : null,
       additionData,
       msgCreatedAt,
       msgUpdatedAt: msgCreatedAt,
     };
   };
 
-  /**
-   * Find the Thread which input message belongs to. If can not find thread, create one.
-   *
-   * @param {MessengerMessageType} message
-   * @return {ThreadType}
-   */
   getOrCreateThreadByMsg = async (message) => {
     const {
       sender: { id: senderId },
       recipient: { id: recipientId },
-      message: { is_echo: isEcho },
+      message: { is_echo: isEcho, text, app_id: appId },
     } = message;
     const uniqueKey = isEcho ? recipientId : senderId;
     const thread = await db.Thread.findOne({
       where: { channelId: this.channel.id, uniqueKey },
     });
 
-    if (thread) return { thread, isCreated: false };
+    const messageManualOrFromTool = !appId || this.appId === appId;
+
+    if (thread) {
+      // TODO: Fix this duplicate logic of checking message is hidden
+      const isVerified = senderId === this.channel.uniqueKey;
+      const reviewContext = await db.LogReview.findOne({
+        where: {
+          isEnd: false,
+          threadId: thread.id,
+        },
+      });
+      const isMessageHidden = isVerified
+        ? text
+          ? text.startsWith("[Tin nhắn tự động]")
+          : false
+        : !!reviewContext && !!text && !!text.match(/^★{1,5}$/);
+
+      const shouldUpdateThreadStatus = isVerified
+        ? !isMessageHidden && messageManualOrFromTool
+        : !isMessageHidden;
+
+      if (thread.status === THREAD_STATUS_DONE && shouldUpdateThreadStatus) {
+        thread.update({ status: THREAD_STATUS_UNREAD });
+      }
+      return { thread, isCreated: false };
+    }
 
     const profile = await getUserProfileFB(uniqueKey, this.accessToken);
-    const thr = await db.Thread.create({
-      channelId: this.channel.id,
-      uniqueKey,
-      title: profile.name,
-      status: THREAD_STATUS_UNREAD,
-      additionData: {
-        avatarUrl: profile.picture.data.url,
-      },
-    });
-    return { thread: thr, isCreated: true };
+    try {
+      const isVerified = senderId === this.channel.uniqueKey;
+      const shouldUpdateThreadStatus = isVerified
+        ? messageManualOrFromTool
+        : true;
+      const thr = await db.Thread.create({
+        channelId: this.channel.id,
+        uniqueKey,
+        title: profile.name,
+        status: shouldUpdateThreadStatus
+          ? THREAD_STATUS_UNREAD
+          : THREAD_STATUS_DONE,
+        additionData: {
+          avatarUrl:
+            profile &&
+            profile.picture &&
+            profile.picture.data &&
+            profile.picture.data.url,
+        },
+      });
+      return { thread: thr, isCreated: true };
+    } catch (err) {
+      if (err.name === "SequelizeUniqueConstraintError") {
+        const thr = await db.Thread.findOne({
+          where: { channelId: this.channel.id, uniqueKey },
+        });
+        if (thr) {
+          return { thread: thr, isCreated: false };
+        } else {
+          throw new Error(
+            `Cannot find or create Thread with channelId ${this.channel.id} and uniqueKey ${uniqueKey}`
+          );
+        }
+      }
+    }
   };
 
-  /**
-   * Find the customer own the message. If can not find, create one.
-   *
-   * @param {MessengerMessageType} message
-   * @return {CustomerType}
-   */
   getOrCreateCustomerByMsg = async (message) => {
     const {
       sender: { id: uniqueKey },
@@ -138,41 +187,47 @@ class Messenger extends InstantMessage {
 
     if (customer) return { customer, isCreated: false };
     const profile = await getUserProfileFB(uniqueKey, this.accessToken);
-    const cus = await db.Customer.create({
-      channelId: this.channel.id,
-      uniqueKey,
-      name: profile.name,
-      additionData: {
-        avatarUrl: profile.picture.data.url,
-      },
-    });
-    return { customer: cus, isCreated: true };
+    try {
+      const cus = await db.Customer.create({
+        channelId: this.channel.id,
+        uniqueKey,
+        name: profile.name,
+        additionData: {
+          avatarUrl: profile.picture.data.url,
+        },
+      });
+      return { customer: cus, isCreated: true };
+    } catch (err) {
+      if (err.name === "SequelizeUniqueConstraintError") {
+        const cus = await db.Customer.findOne({
+          where: { channelId: this.channel.id, uniqueKey },
+        });
+        if (cus) {
+          return { customer: cus, isCreated: false };
+        } else {
+          throw new Error(
+            `Cannot find or create Customer with channelId ${this.channel.id} and uniqueKey ${uniqueKey}`
+          );
+        }
+      }
+    }
   };
 
-  triggerOnHandleMessage = async (savedMessage, thread) => {
-    const oldMissCount = thread.missCount;
-    await calculateInferenceField.oneLevel(savedMessage, thread);
-    const missCountChange = thread.missCount - oldMissCount;
-    const updatedThread = await db.Thread.findByPk(thread.id);
-    this.emitSocketNewMessage(savedMessage, updatedThread, missCountChange);
+  triggerOnHandleMessage = async (message, thread) => {
+    triggerCheckCustomerPhone(message, thread);
+    triggerChatbot(message, thread, this.bot);
+    !message.hidden && calculateInferenceField.oneLevel(message, thread);
+    !message.isVerified &&
+      handleConversationResponse(this.bot, message, thread);
   };
 
-  /**
-   * Navigate all event base on event.type
-   * @param {Object} event
-   */
   onEvent = async (event) => {
-    debug(`Receive event:\n${JSON.stringify(event, null, 2)}`);
     switch (event.type) {
-      case 'read':
+      case "read":
         return this.onRead(event);
     }
   };
 
-  /**
-   * Handle onRead event
-   * @param {Object} message
-   */
   onRead = async (message) => {
     const {
       sender: { id: uniqueKey },
@@ -180,44 +235,32 @@ class Messenger extends InstantMessage {
     const thread = await db.Thread.findOne({
       where: { channelId: this.channel.id, uniqueKey },
     });
-    const updatedThread = await thread.update({
+    if (!thread) return;
+
+    await thread.update({
       readAt: formatTime(message.timestamp),
     });
-
-    const threadWithLastMessage = await threadsWithLastMessage(updatedThread);
-
-    const roomName = this.channel.configs.isBroadcast
-      ? getRoomName(CHANNEL_SOCKET_KEY, this.channel.id)
-      : getRoomName(THREAD_SOCKET_KEY, thread.id);
-
-    emitThreadUpdateRead(this.app.io, roomName, {
-      thread: threadWithLastMessage,
-    });
-
-    return updatedThread;
   };
 
-  /**
-   * Send message to facebook user
-   * @param {Object} sendData
-   */
   sendMessage = async (sendData) => {
     const { target: recipientId, message, attachment, userId } = sendData;
-    debug(`send message to ${recipientId}\n${JSON.stringify(sendData, null, 2)}`);
+    debug(
+      `send message to ${recipientId}\n${JSON.stringify(sendData, null, 2)}`
+    );
 
     if (message && attachment) {
       return {
         success: false,
-        response: { message: 'You can only send text or attachment' },
+        response: { message: "You can only send text or attachment" },
       };
     }
 
     const formData = new FormData();
     formData.append(
-      'recipient',
+      "recipient",
       JSON.stringify({
         id: recipientId,
-      }),
+      })
     );
     const messageData = message
       ? { text: message }
@@ -227,19 +270,130 @@ class Messenger extends InstantMessage {
             payload: {},
           },
         };
-    formData.append('message', JSON.stringify(messageData));
+    formData.append("message", JSON.stringify(messageData));
     if (attachment) {
-      formData.append('filedata', fs.createReadStream(attachment.path));
+      formData.append("filedata", fs.createReadStream(attachment.path));
     }
     const result = await sendMessenger(formData, this.accessToken);
 
-    // TODO: Better slice
     if (result.success) {
-      result.response.message_id = result.response.message_id.slice(2);
+      result.response.message_id = getFormatedMessageId(
+        result.response.message_id
+      );
     }
     if (result.success) client.set(result.response.message_id, userId);
 
     return result;
+  };
+
+  reloadMessage = async (message) => {
+    const messageInfo = await loadMessage(
+      `m_${message.mid}`,
+      ["message", "attachments"],
+      this.accessToken
+    );
+
+    const { message: content } = messageInfo;
+    const attachmentsData =
+      (messageInfo &&
+        messageInfo.attachments &&
+        messageInfo.attachments.data) ||
+      [];
+
+    const getPayloadAttachment = (type, attachment) => {
+      switch (attachment) {
+        case "image":
+          return attachment[`${type}_data`];
+
+        default:
+          return {
+            url: attachment[`file_url`],
+          };
+      }
+    };
+
+    const attachments = attachmentsData.map((item) => {
+      const type = item.mime_type.split("/")[0];
+      let payload = getPayloadAttachment(type, item);
+
+      return {
+        type,
+        payload,
+      };
+    });
+
+    const additionData = _.merge(message.additionData, { attachments });
+    message.set("content", content);
+    message.set("additionData", additionData);
+
+    return message.save();
+  };
+
+  reloadChannel = async (channel) => {
+    const channelInfo = await loadChannel(
+      channel.uniqueKey,
+      ["name", "picture"],
+      this.accessToken
+    );
+
+    const {
+      name,
+      picture: {
+        data: { url: avatarUrl },
+      },
+    } = channelInfo;
+
+    const additionData = _.merge(channel.additionData, { name, avatarUrl });
+    channel.set("additionData", additionData);
+    return channel.save();
+  };
+
+  reloadThread = async (thread) => {
+    const threadInfo = await getUserProfileFB(
+      thread.uniqueKey,
+      this.accessToken
+    );
+    const {
+      name,
+      picture: {
+        data: { url: avatarUrl },
+      },
+    } = threadInfo;
+
+    const additionData = _.merge(thread.additionData, { avatarUrl });
+    thread.set("title", name);
+    thread.set("additionData", additionData);
+    return thread.save();
+  };
+
+  reloadCustomer = async (customer) => {
+    const customerInfo = await getUserProfileFB(
+      customer.uniqueKey,
+      this.accessToken
+    );
+    const {
+      name,
+      picture: {
+        data: { url: avatarUrl },
+      },
+    } = customerInfo;
+
+    const additionData = _.merge(customer.additionData, { avatarUrl });
+    customer.set("name", name);
+    customer.set("additionData", additionData);
+    return customer.save();
+  };
+
+  clearMissMessage = async (message, thread) => {
+    thread.set("missCount", 0);
+    thread.set("missTime", null);
+    await Promise.all([thread.save(), message.save()]);
+  };
+
+  clearMissThread = async (thread) => {
+    thread.set("missTime", null);
+    thread.set("missCount", 0);
+    await thread.save();
   };
 }
 

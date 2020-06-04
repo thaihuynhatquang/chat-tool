@@ -1,8 +1,9 @@
 .env
 *.swp
-dist/
-data/
-node_modules/
-__scripts__/*.env
-src/routes/apidoc/
 .vscode
+apidoc/
+data/
+dist/
+flow-coverage/
+node_modules/
+src/playground/

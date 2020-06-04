@@ -1,7 +1,6 @@
-'use strict';
-module.exports = (sequelize, DataTypes) => {
+export default (sequelize, DataTypes) => {
   const LogAction = sequelize.define(
-    'LogRequest',
+    "LogRequest",
     {
       id: {
         allowNull: false,
@@ -11,15 +10,15 @@ module.exports = (sequelize, DataTypes) => {
       },
       actorId: {
         allowNull: false,
-        field: 'actor_id',
+        field: "actor_id",
         type: DataTypes.INTEGER,
       },
       sourceKey: {
-        field: 'source_key',
+        field: "source_key",
         type: DataTypes.STRING,
       },
       sourceId: {
-        field: 'source_id',
+        field: "source_id",
         type: DataTypes.INTEGER,
       },
       action: {
@@ -27,25 +26,25 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
       },
       targetKey: {
-        field: 'target_key',
+        field: "target_key",
         type: DataTypes.STRING,
       },
       fromData: {
-        field: 'from_data',
+        field: "from_data",
         type: DataTypes.JSON,
       },
       toData: {
-        field: 'to_data',
+        field: "to_data",
         type: DataTypes.JSON,
       },
       createdAt: {
-        field: 'created_at',
-        type: 'TIMESTAMP',
+        field: "created_at",
+        type: "TIMESTAMP",
       },
     },
     {
-      tableName: 'log_actions',
-    },
+      tableName: "log_actions",
+    }
   );
 
   return LogAction;

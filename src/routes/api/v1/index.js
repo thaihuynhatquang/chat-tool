@@ -1,17 +1,24 @@
-import { Router } from 'express';
-import channels from './channels';
-import threads from './threads';
-import customers from './customers';
-import users from './users';
-import tags from './tags';
+import { Router } from "express";
+import channels from "./channels";
+import threads from "./threads";
+import customers from "./customers";
+import messages from "./messages";
+import users from "./users";
+import tags from "./tags";
+import quickReplies from "./quickReplies";
+import stocks from "./stocks";
+import transferThreads from "./transferThreads";
 
 const router = new Router();
 
-router.use('/channels', channels);
-router.use('/threads', threads);
-router.use('/customers', customers);
-router.use('/users', users);
-router.use('/tags', tags);
-router.get('/me', (req, res) => res.json(req.user));
+router.use("/channels", channels);
+router.use("/threads", threads);
+router.use("/customers", customers);
+router.use("/messages", messages);
+router.use("/users", users);
+router.use("/tags", tags);
+router.use("/quickReplies", quickReplies);
+router.use("/stocks", stocks);
+router.use("/transfer-threads", transferThreads);
 
 export default router;

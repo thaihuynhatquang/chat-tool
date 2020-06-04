@@ -1,20 +1,19 @@
-'use strict';
-module.exports = (sequelize, DataTypes) => {
+export default (sequelize, DataTypes) => {
   const CustomerTag = sequelize.define(
-    'CustomerTag',
+    "CustomerTag",
     {
       creator: {
         allowNull: false,
         type: DataTypes.INTEGER,
       },
       createdAt: {
-        field: 'created_at',
-        type: 'TIMESTAMP',
+        field: "created_at",
+        type: "TIMESTAMP",
       },
     },
     {
-      tableName: 'customer_tag',
-    },
+      tableName: "customer_tag",
+    }
   );
 
   return CustomerTag;

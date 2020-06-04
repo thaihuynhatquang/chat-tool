@@ -1,22 +1,38 @@
-import checkAuth from 'utils/authorize';
-import asyncMiddleware from 'routes/middlewares/asyncMiddleware';
+import db from "models";
+import { checkUserPermission } from "utils/authorize";
 
-const authorize = asyncMiddleware(async (req, res, next) => {
+export const canAccessChannel = async (req, res, next) => {
   try {
-    const tokenPattern = 'Bearer ';
-    const accessToken =
-      req.cookies.access_token ||
-      (req.headers.authorization &&
-        req.headers.authorization.startsWith(tokenPattern) &&
-        req.headers.authorization.substring(tokenPattern.length));
-    if (!accessToken) return res.sendStatus(401);
-    const user = await checkAuth(accessToken);
-    req.user = user;
+    const { channelId } = req.params;
+    const { id: userId } = req.user;
+    const user = await db.User.findByPk(userId);
+    if (!user) return res.sendStatus(404);
+    const isUserInChannel = await user.hasChannel(parseInt(channelId));
+
+    if (!isUserInChannel) return res.sendStatus(403);
     next();
   } catch (err) {
-    // TODO: Logging error here
-    return res.sendStatus(401);
+    next(err);
   }
-});
+};
 
-export default authorize;
+export const can = (permissionKey) => async (req, res, next) => {
+  try {
+    let channelId = req.params.channelId;
+    if (!channelId) {
+      const { threadId } = req.params;
+      const thread = await db.Thread.findByPk(threadId);
+      if (thread) channelId = thread.channelId;
+    }
+    if (!channelId) return res.sendStatus(403);
+    const canDo = await checkUserPermission(
+      req.user.id,
+      permissionKey,
+      channelId
+    );
+    if (!canDo) return res.sendStatus(403);
+    next();
+  } catch (err) {
+    next(err);
+  }
+};

@@ -1,7 +1,6 @@
-'use strict';
-module.exports = (sequelize, DataTypes) => {
+export default (sequelize, DataTypes) => {
   const Customer = sequelize.define(
-    'Customer',
+    "Customer",
     {
       id: {
         allowNull: false,
@@ -11,14 +10,12 @@ module.exports = (sequelize, DataTypes) => {
       },
       channelId: {
         allowNull: false,
-        field: 'channel_id',
-        unique: 'compositeIndex',
+        field: "channel_id",
         type: DataTypes.INTEGER,
       },
       uniqueKey: {
         allowNull: false,
-        field: 'unique_key',
-        unique: 'compositeIndex',
+        field: "unique_key",
         type: DataTypes.STRING,
       },
       name: {
@@ -29,36 +26,40 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(50),
       },
       additionData: {
-        field: 'addition_data',
+        field: "addition_data",
         type: DataTypes.JSON,
       },
       createdAt: {
-        field: 'created_at',
-        type: 'TIMESTAMP',
+        field: "created_at",
+        type: "TIMESTAMP",
       },
       updatedAt: {
-        field: 'updated_at',
-        type: 'TIMESTAMP',
+        field: "updated_at",
+        type: "TIMESTAMP",
       },
     },
     {
-      tableName: 'customers',
-    },
+      tableName: "customers",
+      name: {
+        singular: "customer",
+        plural: "customers",
+      },
+    }
   );
 
   Customer.associate = function(models) {
     models.Customer.hasMany(models.Note);
     models.Customer.belongsToMany(models.Thread, {
-      through: 'customer_thread',
+      through: "customer_thread",
     });
     models.Customer.belongsToMany(models.Tag, {
-      through: 'CustomerTag',
+      through: "CustomerTag",
     });
     models.Customer.belongsTo(models.Channel);
   };
 
   Customer.scopes = function(models) {
-    models.Customer.addScope('withNotesAndTags', {
+    models.Customer.addScope("withNotesAndTags", {
       include: [
         {
           model: models.Note,

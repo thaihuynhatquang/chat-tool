@@ -1,7 +1,6 @@
-'use strict';
-module.exports = (sequelize, DataTypes) => {
+export default (sequelize, DataTypes) => {
   const Note = sequelize.define(
-    'Note',
+    "Note",
     {
       id: {
         allowNull: false,
@@ -14,32 +13,32 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
       },
       createdAt: {
-        field: 'created_at',
-        type: 'TIMESTAMP',
+        field: "created_at",
+        type: "TIMESTAMP",
       },
       updatedAt: {
-        field: 'updated_at',
-        type: 'TIMESTAMP',
+        field: "updated_at",
+        type: "TIMESTAMP",
       },
     },
     {
-      tableName: 'notes',
+      tableName: "notes",
       name: {
-        singular: 'note',
-        plural: 'notes',
+        singular: "note",
+        plural: "notes",
       },
-    },
+    }
   );
 
   Note.associate = function(models) {
     models.Note.belongsTo(models.Customer);
     models.Note.belongsTo(models.User, {
-      foreignKey: 'creator',
+      foreignKey: "creator",
     });
   };
 
   Note.scopes = function(models) {
-    models.Note.addScope('withUser', {
+    models.Note.addScope("withUser", {
       include: [models.User],
     });
   };

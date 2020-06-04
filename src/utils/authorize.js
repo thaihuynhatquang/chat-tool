@@ -1,24 +1,49 @@
-import axios from 'axios';
-import db from 'models';
-import client from 'config/redis';
-import { EXPIRED_TIME } from 'constants';
+import db from "models";
 
-export default async (accessToken) => {
-  let user = JSON.parse(await client.getAsync(`accessToken:${accessToken}`));
-  if (!user) {
-    const { data } = await axios.get(`https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=${accessToken}`);
-    console.log(data);
-    user = await db.User.findOrCreate({
-      raw: true,
-      where: { googleId: data.sub },
-      defaults: {
-        googleId: data.sub,
-        name: data.name,
-        email: data.email,
-        avatarUrl: data.picture,
+export const checkUserPermission = async (userId, permissionKey, channelId) => {
+  const permission = await db.Permission.findOne({
+    where: { key: permissionKey },
+  });
+  if (!permission) return false;
+  const user = await db.User.findByPk(userId);
+  if (!user) return [];
+  const [rolesOfUser, rolesOfPermission] = await Promise.all([
+    user.getRoles({
+      where: { channelId },
+    }),
+    permission.getRoles({
+      where: { channelId },
+    }),
+  ]);
+
+  const roleIdsOfPermission = rolesOfPermission.map((item) => item.id);
+  return (
+    rolesOfUser.filter((role) => roleIdsOfPermission.indexOf(role.id) !== -1)
+      .length !== 0
+  );
+};
+
+export const getUsersByPermission = async (permissionKey, channelId) => {
+  const permission = await db.Permission.findOne({
+    where: { key: permissionKey },
+  });
+  if (!permission) return [];
+
+  const rolesOfPermission = await permission.getRoles({
+    where: { channelId },
+  });
+
+  const usersHasPermission = await db.User.findAll({
+    include: [
+      {
+        model: db.Role,
+        where: {
+          id: rolesOfPermission.map((role) => role.id),
+          channel_id: channelId,
+        },
       },
-    }).spread((user, created) => user);
-    client.set(`accessToken:${accessToken}`, JSON.stringify(user), 'EX', EXPIRED_TIME);
-  }
-  return user;
+    ],
+  });
+
+  return usersHasPermission;
 };

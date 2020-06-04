@@ -1,38 +1,37 @@
-version: '3'
+version: "3"
 
 services:
   server:
     build:
       context: .
       dockerfile: Dockerfile
-    image: chat-web-server
+    image: chat-tool-server
     env_file: .env
     depends_on:
       - mysql
       - redis
-    command: ./wait-for-it.sh mysql:3306 -t 0 -- npm start
     ports:
-      - '${APP_PORT}:${APP_PORT}'
+      - "3000:3000"
     volumes:
       - .:/app
 
   mysql:
-    image: 'mysql:5.7'
-    command: --default-time-zone=${TIMEZONE} --character-set-server=utf8mb4 --collation-server=utf8mb4_bin --default-authentication-plugin=mysql_native_password
+    image: "mysql:5.7"
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci --default-authentication-plugin=mysql_native_password --default-time-zone=${TIMEZONE} --explicit_defaults_for_timestamp
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USERNAME}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     ports:
-      - '2705:3306'
+      - "3306:3306"
     restart: always
     volumes:
       - ./data/mysql:/var/lib/mysql
 
   redis:
-    image: 'redis'
+    image: "redis"
     ports:
-      - '2706:6379'
+      - "2706:6379"
     volumes:
       - ./data/redis:/data

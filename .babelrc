@@ -3,18 +3,23 @@
   "plugins": [
     "@babel/plugin-proposal-class-properties",
     "@babel/plugin-proposal-object-rest-spread",
-    ["module-resolver", {
-      "alias": {
-        "app": "./src/app",
-        "config": "./src/config",
-        "constants": "./src/constants",
-        "core": "./src/core",
-        "database": "./src/database",
-        "models": "./src/models",
-        "routes": "./src/routes",
-        "types": "./src/types",
-        "utils": "./src/utils"
+    [
+      "module-resolver",
+      {
+        "alias": {
+          "app": "./src/app",
+          "config": "./src/config",
+          "constants": "./src/constants",
+          "core": "./src/core",
+          "cronjobs": "./src/cronjobs",
+          "database": "./src/database",
+          "models": "./src/models",
+          "routes": "./src/routes",
+          "types": "./src/types",
+          "utils": "./src/utils",
+          "services": "./src/services"
+        }
       }
-    }]
+    ]
   ]
 }

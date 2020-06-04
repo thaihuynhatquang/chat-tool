@@ -1,7 +1,6 @@
-'use strict';
-module.exports = (sequelize, DataTypes) => {
+export default (sequelize, DataTypes) => {
   const LogRequest = sequelize.define(
-    'LogRequest',
+    "LogRequest",
     {
       id: {
         allowNull: false,
@@ -24,25 +23,25 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.JSON,
       },
       elapsedTime: {
-        field: 'elapsed_time',
+        field: "elapsed_time",
         type: DataTypes.INTEGER,
       },
       responseStatus: {
-        field: 'response_status',
+        field: "response_status",
         type: DataTypes.INTEGER,
       },
       createdAt: {
-        field: 'created_at',
-        type: 'TIMESTAMP',
+        field: "created_at",
+        type: "TIMESTAMP",
       },
       updatedAt: {
-        field: 'updated_at',
-        type: 'TIMESTAMP',
+        field: "updated_at",
+        type: "TIMESTAMP",
       },
     },
     {
-      tableName: 'log_requests',
-    },
+      tableName: "log_requests",
+    }
   );
 
   return LogRequest;

@@ -1,49 +1,104 @@
-import client from 'config/redis';
-import { flatten } from 'utils/common';
-import { NEW_MESSAGE_EVENT, UPDATE_THREAD_STATUS_EVENT, UPDATE_THREAD_READ_EVENT } from 'constants';
+import db from "models";
+import io, {
+  GET_ONLINE_USER_IDS,
+  GET_SOCKET_IDS_BY_USER_IDS,
+} from "config/socket";
+import { flatten } from "utils/common";
+import { PERMISSION_AUTO_RECEIVE_THREADS } from "constants";
 
-export const getSocketIdsByUserId = async (userId) => {
-  const socketIds = await client.lrangeAsync(userId, 0, -1);
-  return socketIds;
-};
+export const getRoomName = (type, id) => `${type}:${id}`;
 
-export const socketsJoinRoom = async (io, usersServing, roomName) => {
-  const socketIdsByUser = await Promise.all(
-    usersServing.map(async (user) => ({
-      userId: user.id,
-      socketIds: await getSocketIdsByUserId(user.id),
-    })),
-  );
-  const promises = socketIdsByUser.map(({ socketIds, userId }) => {
-    return socketIds.map((socketId) => {
-      return new Promise((resolve) => {
-        io.of('/').adapter.remoteJoin(socketId, roomName, (error) => {
-          if (error) {
-            // NOTE: expired socketId then remove from redis
-            client.lrem(userId, 0, socketId);
-          }
-          resolve(true);
-        });
+export const socketsJoinRoomBySocketIds = async (socketIds, roomName) => {
+  const promises = socketIds.map((socketId) => {
+    return new Promise((resolve) => {
+      io.of("/").adapter.remoteJoin(socketId, roomName, () => {
+        resolve(true);
       });
     });
   });
-  return Promise.all(flatten(promises)).then((arrayStatus) => arrayStatus.every((status) => status === true));
+  return Promise.all(promises).then((arrayStatus) =>
+    arrayStatus.every((status) => status === true)
+  );
 };
 
-export const emitNewMessage = (io, roomName, data) => {
-  io.of('/')
-    .to(roomName)
-    .emit(NEW_MESSAGE_EVENT, data);
+export const socketsJoinRoomByUserIds = async (userIds, roomName) => {
+  const socketIds = await getSocketIdsByUserIds(userIds);
+  const promises = socketsJoinRoomBySocketIds(socketIds, roomName);
+
+  return promises.then(() => true).catch(() => false);
 };
 
-export const emitThreadUpdateStatus = (io, roomName, data) => {
-  io.of('/')
-    .to(roomName)
-    .emit(UPDATE_THREAD_STATUS_EVENT, data);
+export const socketsLeaveRoomBySocketIds = async (socketIds, roomName) => {
+  const promises = socketIds.map((socketId) => {
+    return new Promise((resolve) => {
+      io.of("/").adapter.remoteLeave(socketId, roomName, () => {
+        resolve(true);
+      });
+    });
+  });
+
+  return Promise.all(promises).then((arrayStatus) =>
+    arrayStatus.every((status) => status === true)
+  );
 };
 
-export const emitThreadUpdateRead = (io, roomName, data) => {
-  io.of('/')
-    .to(roomName)
-    .emit(UPDATE_THREAD_READ_EVENT, data);
+export const socketsLeaveRoomByUserIds = async (userIds, roomName) => {
+  const socketIds = await getSocketIdsByUserIds(userIds);
+  const promises = socketsLeaveRoomBySocketIds(socketIds, roomName);
+
+  return promises.then(() => true).catch(() => false);
 };
+
+export const getAssignableUserIdsOfChannel = async (channel) => {
+  const userOnlineIds = await getOnlineUserIds();
+  // Only get user has permission auto receive threads
+  const permissionAutoReceiveThreads = await db.Permission.findOne({
+    where: { key: PERMISSION_AUTO_RECEIVE_THREADS },
+  });
+  if (!permissionAutoReceiveThreads) return [];
+  const roles = await permissionAutoReceiveThreads.getRoles({
+    where: {
+      channelId: channel.id,
+    },
+  });
+
+  const users = await channel.getUsers({
+    where: {
+      id: {
+        $in: userOnlineIds,
+      },
+    },
+    include: [
+      {
+        model: db.Role,
+        where: {
+          id: {
+            $in: roles.map((role) => role.id),
+          },
+          channel_id: channel.id,
+        },
+      },
+    ],
+  });
+  return users.map((user) => user.id);
+};
+
+// Hook actions
+export const getSocketIdsByUserIds = (userIds) =>
+  emitCustomHookEvent({
+    type: GET_SOCKET_IDS_BY_USER_IDS,
+    payload: userIds,
+  });
+
+export const getOnlineUserIds = () =>
+  emitCustomHookEvent({
+    type: GET_ONLINE_USER_IDS,
+  });
+
+const emitCustomHookEvent = (request) =>
+  new Promise((resolve, reject) => {
+    io.of("/").adapter.customRequest(request, (err, replies) => {
+      if (err) return reject(err);
+      resolve(flatten(replies));
+    });
+  });

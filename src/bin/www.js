@@ -1,38 +1,40 @@
 #!/usr/bin/env node
+// @flow
 
 /**
  * Module dependencies.
  */
-var app = require('../app').default;
-var http = require('http');
-var debug = require('debug')('express:server');
+require("dotenv").config();
+var app = require("../app").default;
+var io = require("config/socket").default;
+var http = require("http");
+var debug = require("debug")("app:express:server");
+var constants = require("constants");
 
 /**
  * Get port from environment and store in Express.
  */
 
-var port = normalizePort(process.env.PORT || '3000');
-app.set('port', port);
+var port = normalizePort(process.env.APP_PORT || "3000");
+app.set("port", port);
 
 /**
  * Create HTTP server.
  */
-
 var server = http.createServer(app);
 
 /**
  * Config Socket.IO
  */
-var io = app.io;
 io.attach(server);
 
 /**
  * Listen on provided port, on all network interfaces.
  */
 
-server.listen(port);
-server.on('error', onError);
-server.on('listening', onListening);
+server.listen(port + constants.NODE_APP_INSTANCE);
+server.on("error", onError);
+server.on("listening", onListening);
 
 /**
  * Normalize a port into a number, string, or false.
@@ -59,19 +61,24 @@ function normalizePort(val) {
  */
 
 function onError(error) {
-  if (error.syscall !== 'listen') {
+  if (error.syscall !== "listen") {
     throw error;
   }
 
-  var bind = typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port;
+  var bind =
+    typeof port === "string"
+      ? "Pipe " + port
+      : typeof port === "number"
+      ? "Port " + port
+      : "Port false";
 
   // handle specific listen errors with friendly messages
   switch (error.code) {
-    case 'EACCES':
-      console.error(bind + ' requires elevated privileges');
+    case "EACCES":
+      console.error(bind + " requires elevated privileges");
       process.exit(1);
-    case 'EADDRINUSE':
-      console.error(bind + ' is already in use');
+    case "EADDRINUSE":
+      console.error(bind + " is already in use");
       process.exit(1);
     default:
       throw error;
@@ -84,6 +91,6 @@ function onError(error) {
 
 function onListening() {
   var addr = server.address();
-  var bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
-  debug('Listening on ' + bind);
+  var bind = typeof addr === "string" ? "pipe " + addr : "port " + addr.port;
+  debug("Listening on " + bind + " with NODE_ENV " + process.env.NODE_ENV);
 }

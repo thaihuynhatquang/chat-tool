@@ -1,23 +1,29 @@
-import FormData from 'form-data';
-import fs from 'fs';
-import db from 'models';
-import InstantMessage from './interface';
-import { formatTime } from 'utils/time';
-import { THREAD_STATUS_PROCESSING } from 'constants';
-import { getUserProfileFB, getPostInformation, postComment } from 'utils/graph';
-import * as calculateInferenceField from '../triggers/calculateInferenceField';
-import client from 'config/redis';
-
-const debug = require('debug')('app:im:fbcomment');
+import client from "config/redis";
+import { THREAD_STATUS_DONE, THREAD_STATUS_UNREAD } from "constants";
+import * as calculateInferenceField from "core/triggers/calculateInferenceField";
+import FormData from "form-data";
+import fs from "fs";
+import _ from "lodash";
+import db from "models";
+import {
+  getPostInformation,
+  getUserProfileFB,
+  loadChannel,
+  loadMessage,
+  postComment,
+} from "utils/graph";
+import { formatTime } from "utils/time";
+import InstantMessage from "./interface";
+const debug = require("debug")("app:im:fbcomment");
 
 const extractPhotos = (post) => {
   const { attachments, type, source } = post;
 
   let photos = [];
-  if (type === 'video') photos.push(source);
-  else if (type === 'photo') {
+  if (type === "video") photos.push(source);
+  else if (type === "photo") {
     attachments.data.forEach((att) => {
-      if (att.hasOwnProperty('subattachments')) {
+      if (att.hasOwnProperty("subattachments")) {
         att.subattachments.data.forEach((att) => {
           photos.push(att.media.image.src);
         });
@@ -29,15 +35,19 @@ const extractPhotos = (post) => {
 
   return photos;
 };
+
 class FBComment extends InstantMessage {
-  constructor(channel, app) {
-    super(channel, app);
+  channel;
+  accessToken;
+
+  constructor(channel) {
+    super(channel);
     debug(`Init FBComment channel ${channel.title}`);
     let {
       configs: { accessToken },
     } = channel;
     if (!accessToken) {
-      throw new Error('Require accessToken to create FBComment IM');
+      throw new Error("Require accessToken to create FBComment IM");
     }
     this.channel = channel;
     this.accessToken = accessToken;
@@ -46,9 +56,9 @@ class FBComment extends InstantMessage {
   _getAdditionData = (message) => {
     const { post, video, photo, attachment } = message;
     const attachments = photo
-      ? [{ type: 'image', payload: { url: photo } }]
+      ? [{ type: "image", payload: { url: photo } }]
       : video
-      ? [{ type: 'video', payload: { url: video } }]
+      ? [{ type: "video", payload: { url: video } }]
       : attachment
       ? [{ type: attachment.type, payload: { ...attachment } }]
       : null;
@@ -72,6 +82,7 @@ class FBComment extends InstantMessage {
     let actorInfo = await db.Customer.findOne({
       where: { channelId: this.channel.id, uniqueKey: actorId },
     });
+
     if (!actorInfo) {
       const profile = await getUserProfileFB(actorId, this.accessToken);
       actorInfo = await db.Customer.create({
@@ -79,17 +90,38 @@ class FBComment extends InstantMessage {
         uniqueKey: actorId,
         name: actorName,
         additionData: {
-          avatarUrl: profile.picture.data.url,
+          avatarUrl:
+            profile &&
+            profile.picture &&
+            profile.picture.data &&
+            profile.picture.data.url,
         },
       });
     }
+    const thread = await db.Thread.findOne({
+      where: { channelId: this.channel.id, uniqueKey: postId },
+    });
 
-    return db.Thread.upsert({
-      channelId: this.channel.id,
-      uniqueKey: postId,
-      title: actorId === pageId && content ? content : actorName,
-      status: THREAD_STATUS_PROCESSING,
-      additionData: {
+    if (!thread) {
+      return db.Thread.create({
+        channelId: this.channel.id,
+        uniqueKey: postId,
+        title: actorId === pageId && content ? content : actorName,
+        status: THREAD_STATUS_UNREAD,
+        additionData: {
+          from,
+          type,
+          content,
+          link,
+          photos: extractPhotos(postInfo),
+          url,
+          avatarUrl: actorInfo.additionData.avatarUrl,
+        },
+      });
+    } else {
+      thread.set("title", actorId === pageId && content ? content : actorName);
+      thread.set("status", THREAD_STATUS_UNREAD);
+      thread.set("additionData", {
         from,
         type,
         content,
@@ -97,8 +129,10 @@ class FBComment extends InstantMessage {
         photos: extractPhotos(postInfo),
         url,
         avatarUrl: actorInfo.additionData.avatarUrl,
-      },
-    });
+      });
+
+      return thread.save();
+    }
   };
 
   getOrCreateThreadByMsg = async (message) => {
@@ -106,12 +140,18 @@ class FBComment extends InstantMessage {
     const thread = await db.Thread.findOne({
       where: { channelId: this.channel.id, uniqueKey },
     });
-    if (thread) return { thread, isCreated: false };
+    if (thread) {
+      if (thread.status === THREAD_STATUS_DONE) {
+        thread.update({ status: THREAD_STATUS_UNREAD });
+      }
+      return { thread, isCreated: false };
+    }
 
     await this._createOrUpdateThread(uniqueKey, pageId);
     const newThread = await db.Thread.findOne({
       where: { channelId: this.channel.id, uniqueKey },
     });
+    if (!newThread) throw new Error("Thread not found");
     return { thread: newThread, isCreated: true };
   };
 
@@ -130,7 +170,11 @@ class FBComment extends InstantMessage {
       uniqueKey,
       name,
       additionData: {
-        avatarUrl: profile.picture.data.url,
+        avatarUrl:
+          profile &&
+          profile.picture &&
+          profile.picture.data &&
+          profile.picture.data.url,
       },
     });
     return { customer: newCustomer, isCreated: true };
@@ -148,6 +192,12 @@ class FBComment extends InstantMessage {
     const additionData = this._getAdditionData(message);
 
     const userId = await client.getAsync(mid);
+    const isExistsParentAsThread = !!(await db.Thread.findOne({
+      where: { uniqueKey: parentId, channelId: this.channel.id },
+    }));
+    const isExistsParentAsMessage = !!(await db.Message.findOne({
+      where: { mid: parentId },
+    }));
 
     return {
       mid,
@@ -155,88 +205,225 @@ class FBComment extends InstantMessage {
       customerId: customer.id,
       userId,
       isVerified: senderId === this.channel.uniqueKey,
-      parentId: parentId === postId ? null : parentId,
+      parentId:
+        parentId === postId || isExistsParentAsThread
+          ? null
+          : isExistsParentAsMessage
+          ? parentId
+          : null,
       additionData,
       content,
       msgCreatedAt: formatTime(createdAt * 1000),
     };
   };
 
-  triggerOnHandleMessage = async (savedMessage, thread) => {
-    const oldMissCount = thread.missCount;
-    await calculateInferenceField.twoLevel(savedMessage, thread);
-    const missCountChange = thread.missCount - oldMissCount;
-    this.emitSocketNewMessage(savedMessage, thread, missCountChange);
+  triggerOnHandleMessage = async (message, thread) => {
+    calculateInferenceField.twoLevel(message, thread);
   };
 
   onEvent = async (event) => {
     debug(`Receive event ${event.type}:\n${JSON.stringify(event, null, 2)}`);
     switch (event.type) {
-      case 'edited_comment':
+      case "edited_comment":
         return this.editComment(event);
-      case 'remove_comment':
+      case "remove_comment":
         return this.deleteComment(event);
-      case 'add_post':
+      case "add_post":
         return this.addPost(event);
-      case 'edited_post':
+      case "edited_post":
         return this.editPost(event);
-      case 'remove_post':
+      case "remove_post":
         return this.deletePost(event);
       default:
-        debug('Why are we here???');
+        debug("Why are we here???");
     }
   };
 
   editComment = async (message) => {
-    const { message: content, comment_id: mid, created_time: updatedTime } = message;
+    const {
+      message: content,
+      comment_id: mid,
+      created_time: updatedTime,
+    } = message;
     const additionData = this._getAdditionData(message);
-    return db.Message.update(
-      { content, additionData, updatedTime: formatTime(updatedTime * 1000) },
-      { where: { mid } },
+    await db.Message.update(
+      { content, additionData, msgUpdatedAt: formatTime(updatedTime * 1000) },
+      { where: { mid } }
     );
   };
 
   deleteComment = async (message) => {
     const { comment_id: mid, created_time: msgDeletedAt } = message;
-    db.ThreadInferenceData.update({ missCount: 0, missTime: null }, { where: { uniqueKey: mid } });
-    return db.Message.update(
+    db.ThreadInferenceData.update(
+      { missCount: 0, missTime: null },
+      { where: { uniqueKey: mid } }
+    );
+    db.Message.update(
       { msgDeletedAt: formatTime(msgDeletedAt * 1000) },
-      { where: { [db.Sequelize.Op.or]: [{ mid }, { parentId: mid }] } },
+      {
+        where: { mid },
+      }
+    );
+    db.Message.update(
+      { msgDeletedAt: formatTime(msgDeletedAt * 1000) },
+      {
+        where: { parentId: mid },
+      }
     );
   };
 
   addPost = async (message) => {
     const { post_id: postId, pageId } = message;
-    return this._createOrUpdateThread(postId, pageId);
+    await this._createOrUpdateThread(postId, pageId);
   };
 
   editPost = async (message) => {
     const { post_id: postId, pageId } = message;
-    return this._createOrUpdateThread(postId, pageId);
+    await this._createOrUpdateThread(postId, pageId);
   };
 
   deletePost = async (message) => {
     const { post_id: uniqueKey, created_time: deletedAt } = message;
-    return db.Thread.update(
+    db.Thread.update(
       { deletedAt: formatTime(deletedAt * 1000) },
-      { where: { channelId: this.channel.id, uniqueKey } },
+      { where: { channelId: this.channel.id, uniqueKey } }
     );
   };
 
   sendMessage = async (sendData) => {
     const { message, attachment, target: postId, parentId, userId } = sendData;
-    debug(`Publish Comment to: ${postId}\n${JSON.stringify(sendData, null, 2)}`);
+    debug(
+      `Publish Comment to: ${postId}\n${JSON.stringify(sendData, null, 2)}`
+    );
     const commentId = parentId || postId;
     const formData = new FormData();
-    formData.append('message', message);
+    if (message) formData.append("message", message);
     if (attachment) {
-      formData.append('source', fs.createReadStream(attachment.path));
+      formData.append("source", fs.createReadStream(attachment.path));
     }
     const result = await postComment(formData, commentId, this.accessToken);
 
     if (result.success) client.set(result.response.id, userId);
 
     return result;
+  };
+
+  reloadChannel = async (channel) => {
+    const channelInfo = await loadChannel(
+      channel.uniqueKey,
+      ["name", "picture"],
+      this.accessToken
+    );
+
+    const {
+      name,
+      picture: {
+        data: { url: avatarUrl },
+      },
+    } = channelInfo;
+
+    const additionData = _.merge(channel.additionData, { name, avatarUrl });
+    channel.set("additionData", additionData);
+    return channel.save();
+  };
+
+  reloadMessage = async (message) => {
+    const messageInfo = await loadMessage(
+      message.mid,
+      ["message", "attachment"],
+      this.accessToken
+    );
+
+    const { message: content, attachment } = messageInfo;
+
+    if (!attachment) return message;
+    const {
+      media: {
+        image: { src: url },
+      },
+    } = attachment;
+
+    const updateAttachment = [
+      {
+        type: "image",
+        payload: {
+          url,
+        },
+      },
+    ];
+
+    const additionData = _.merge(message.additionData, {
+      attachments: updateAttachment,
+    });
+    message.set("content", content);
+    message.set("additionData", additionData);
+
+    return message.save();
+  };
+
+  reloadThread = async (thread) => {
+    const threadInfo = await getPostInformation(
+      thread.uniqueKey,
+      this.accessToken
+    );
+
+    const additionData = _.merge(thread.additionData, {
+      avatarUrl:
+        threadInfo &&
+        threadInfo.picture &&
+        threadInfo.picture.data &&
+        threadInfo.picture.data.url,
+      url: threadInfo && threadInfo.permalink_url,
+      photos: extractPhotos(threadInfo),
+    });
+
+    thread.set("title", (threadInfo && threadInfo.message) || thread.uniqueKey);
+    thread.set("additionData", additionData);
+    return thread.save();
+  };
+
+  reloadCustomer = async (customer) => {
+    const customerInfo = await getUserProfileFB(
+      customer.uniqueKey,
+      this.accessToken
+    );
+    const {
+      name,
+      picture: {
+        data: { url: avatarUrl },
+      },
+    } = customerInfo;
+
+    const additionData = _.merge(customer.additionData, { avatarUrl });
+    customer.set("name", name);
+    customer.set("additionData", additionData);
+    return customer.save();
+  };
+
+  clearMissMessage = async (message, thread) => {
+    const [
+      { missCount, missTime },
+    ] = await calculateInferenceField.filterMissTwoLevelInThread(thread.id);
+
+    thread.set("missCount", missCount);
+    thread.set("missTime", missTime);
+    thread.save();
+  };
+
+  clearMissThread = async (thread) => {
+    await db.ThreadInferenceData.update(
+      {
+        missCount: 0,
+        missTime: null,
+      },
+      {
+        where: { threadId: thread.id },
+      }
+    );
+
+    thread.set("missCount", 0);
+    thread.set("missTime", null);
+    await thread.save();
   };
 }
 

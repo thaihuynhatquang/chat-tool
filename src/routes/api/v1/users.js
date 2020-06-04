@@ -1,77 +1,95 @@
-import { Router } from 'express';
-import db from 'models';
-import asyncMiddleware from 'routes/middlewares/asyncMiddleware';
+import { Router } from "express";
+import { PERMISSION_UPDATE_CHANNEL } from "constants";
+import db from "models";
+import asyncMiddleware from "routes/middlewares/asyncMiddleware";
+import { checkUserPermission } from "utils/authorize";
+import { isWorkingTime } from "utils/time";
 
 const router = new Router();
 
-/**
- * @api {get} /users 0. Get all users
- * @apiName GetUsers
- * @apiGroup User
- * @apiVersion 1.0.0
- * @apiParam {Number} [limit] Limit result data. Max: 100
- * @apiParam {Number} [offset] Offset. Default: 0
- * @apiSuccess {Number} count Total number of users
- * @apiSuccess {Array[]} data List all users. See <a href="#api-User-GetUser">user detail</a>
- * @apiUse GetUsersResponse
- */
 router.get(
-  '/',
+  "/",
   asyncMiddleware(async (req, res) => {
-    const users = await db.User.findAndCountAll();
-    return res.json({ count: users.count, data: users.rows });
-  }),
+    const { limit, offset } = req.query;
+    const [count, users] = await Promise.all([
+      db.User.count(),
+      db.User.scope("withRoles").findAll({ limit, offset }),
+    ]);
+    return res.json({ count, data: users });
+  })
 );
 
-/**
- * @api {get} /users/me 1. Get detail of current user
- * @apiName GetMe
- * @apiGroup User
- * @apiVersion 1.0.0
- * @apiSuccess {Number} id of channel
- * @apiSuccess {String} name Name of user
- * @apiSuccess {String} email User email
- * @apiSuccess {String} phone User phone number
- * @apiSuccess {Date} dob User birthday
- * @apiSuccess {String} avatarUrl Link to image - avatar of user
- * @apiSuccess {String} department User department
- * @apiSuccess {String} position User position
- * @apiSuccess {DateTime} createdAt User created time
- * @apiSuccess {DateTime} createdAt User updated time
- * @apiUse GetUserResponse
- */
 router.get(
-  '/me',
+  "/me",
   asyncMiddleware(async (req, res) => {
-    const user = await db.User.findByPk(req.user.id);
+    const user = await db.User.scope([
+      "withRoles",
+      "withReceiveTransferThreads",
+    ]).findByPk(req.user.id);
     return res.json(user);
-  }),
+  })
 );
 
-/**
- * @api {get} /users/:userId 2. Get detail of a user
- * @apiName GetUser
- * @apiGroup User
- * @apiVersion 1.0.0
- * @apiParam {Number} channelId Channel unique ID
- * @apiSuccess {Number} id of channel
- * @apiSuccess {String} name Name of user
- * @apiSuccess {String} email User email
- * @apiSuccess {String} phone User phone number
- * @apiSuccess {Date} dob User birthday
- * @apiSuccess {String} avatarUrl Link to image - avatar of user
- * @apiSuccess {String} department User department
- * @apiSuccess {String} position User position
- * @apiSuccess {DateTime} createdAt User created time
- * @apiSuccess {DateTime} createdAt User updated time
- * @apiUse GetUserResponse
- */
 router.get(
-  '/:userId',
+  "/:userId",
   asyncMiddleware(async (req, res) => {
-    const user = await db.User.findByPk(req.params.userId);
+    const user = await db.User.scope("withRoles").findByPk(req.params.userId);
     return res.json(user);
-  }),
+  })
+);
+
+router.put(
+  "/me",
+  asyncMiddleware(async (req, res) => {
+    const { user } = req;
+    const { avatarUrl } = req.body;
+    await user.update({
+      avatarUrl,
+    });
+    const updatedUser = await db.User.scope("withRoles").findByPk(user.id);
+    return res.json(updatedUser);
+  })
+);
+
+router.put(
+  "/channels/:channelId/configs",
+  asyncMiddleware(async (req, res) => {
+    const { user } = req;
+    const { userId, configs } = req.body;
+    const { channelId } = req.params;
+    const channel = await db.Channel.findOne({
+      where: { id: channelId },
+    });
+    if (!channel) return res.sendStatus(400);
+    if (channel.configs.forceReceiveThreadsInWorkTime) {
+      const isAdminUpdate = await checkUserPermission(
+        user.id,
+        PERMISSION_UPDATE_CHANNEL,
+        channelId
+      );
+      if (
+        !isAdminUpdate &&
+        isWorkingTime(channel) &&
+        configs.receiveAutoAssign === false
+      ) {
+        return res
+          .status(400)
+          .send("Cannot change receive threads in working time");
+      }
+    }
+    const updatedUserId = userId || user.id;
+    const channelUser = await db.ChannelUser.findOne({
+      where: { channel_id: channelId, user_id: updatedUserId },
+    });
+    channelUser &&
+      (await channelUser.update({
+        configs: {
+          ...channelUser.configs,
+          ...configs,
+        },
+      }));
+    return res.sendStatus(204);
+  })
 );
 
 export default router;

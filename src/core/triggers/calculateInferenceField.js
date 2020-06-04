@@ -1,50 +1,93 @@
-import db from 'models';
+import db from "models";
+import { getUserBot } from "utils/chatbot";
 
+const _calculateMissCountAndTime = async (
+  formattedMessage,
+  missCount,
+  missTime
+) => {
+  let _missTime = missTime;
+  let _missCount = missCount;
+  const { isVerified, userId, msgCreatedAt } = formattedMessage;
+  const chatBotUser = await getUserBot();
+  if (isVerified) {
+    if (userId && userId !== chatBotUser.id) {
+      // user is staff then resolve missCount but bot doesn't
+      _missCount = 0;
+      _missTime = null;
+    }
+  } else {
+    // customer chat then increasing missCount
+    _missCount = missCount ? missCount + 1 : 1;
+    _missTime = missTime || msgCreatedAt;
+  }
+  return {
+    missTime: _missTime,
+    missCount: _missCount || 0,
+  };
+};
 export const oneLevel = async (formattedMessage, thread) => {
-  const { isVerified, mid, msgCreatedAt } = formattedMessage;
-  let { missTime, missCount } = thread;
-  missCount = isVerified ? 0 : missCount ? missCount + 1 : 1;
-  missTime = isVerified ? null : missTime || msgCreatedAt;
-  return thread.update({ missCount, missTime, lastMsgId: mid });
+  const { mid } = formattedMessage;
+  const { missCount, missTime } = await _calculateMissCountAndTime(
+    formattedMessage,
+    thread.missCount,
+    thread.missTime
+  );
+
+  return thread.update({
+    missCount,
+    missTime,
+    lastMsgId: mid,
+    lastMsgAt: formattedMessage.msgCreatedAt,
+  });
+};
+
+export const filterMissTwoLevelInThread = (threadId) => {
+  return db.sequelize.query(
+    `SELECT
+      COUNT(*) as missCount,
+      MIN(customer_msg.msg_created_at) as missTime
+    FROM
+      messages AS customer_msg
+    LEFT JOIN
+      messages AS admin_msg ON admin_msg.mid = (SELECT
+          mid
+        FROM
+          messages
+        WHERE
+          messages.is_verified = 1
+          AND messages.processed = 0
+          AND messages.hidden = 0
+          AND messages.msg_deleted_at IS NULL
+          AND messages.thread_id = :threadId
+          AND messages.msg_created_at >= customer_msg.msg_created_at
+          AND messages.parent_id = IF(customer_msg.parent_id IS NULL,
+            customer_msg.mid,
+            customer_msg.parent_id)
+        LIMIT 1)
+    WHERE
+      customer_msg.is_verified = 0
+        AND customer_msg.processed = 0
+        AND customer_msg.hidden = 0
+        AND customer_msg.msg_deleted_at IS NULL
+        AND customer_msg.thread_id = :threadId
+        AND admin_msg.mid IS NULL
+    ORDER BY customer_msg.msg_created_at ASC
+  `,
+    {
+      replacements: { threadId },
+      type: db.sequelize.QueryTypes.SELECT,
+    }
+  );
 };
 
 export const twoLevel = async (formattedMessage, thread) => {
-  const { mid, isVerified, parentId, msgCreatedAt } = formattedMessage;
+  const [{ missCount, missTime }] = await filterMissTwoLevelInThread(thread.id);
 
-  if (!parentId) {
-    await db.ThreadInferenceData.create({
-      uniqueKey: mid,
-      threadId: thread.id,
-      missCount: isVerified ? 0 : 1,
-      missTime: isVerified ? null : msgCreatedAt,
-      lastMsgId: mid,
-    });
-  }
-
-  const inferenceData = await db.ThreadInferenceData.findOne({
-    where: {
-      uniqueKey: parentId || mid,
-      threadId: thread.id,
-    },
+  return thread.update({
+    lastMsgId: formattedMessage.mid,
+    lastMsgAt: formattedMessage.msgCreatedAt,
+    missCount,
+    missTime,
   });
-
-  if (inferenceData) {
-    await inferenceData.update({
-      missCount: isVerified ? 0 : parentId ? inferenceData.missCount + 1 : 1,
-      missTime: isVerified ? null : inferenceData.missTime || msgCreatedAt,
-      lastMsgId: mid,
-    });
-  }
-
-  const [{ missTime, missCount }] = await db.ThreadInferenceData.findAll({
-    attributes: [
-      [db.sequelize.fn('SUM', db.sequelize.col('miss_count')), 'missCount'],
-      [db.sequelize.fn('MIN', db.sequelize.col('miss_time')), 'missTime'],
-    ],
-    where: {
-      threadId: thread.id,
-    },
-  });
-
-  return thread.update({ missCount, missTime, lastMsgId: mid });
 };
