@@ -30,3 +30,10 @@ export const getNextCursorMessage = (messages) => {
     })
   ).toString("base64");
 };
+
+export const getFormatedMessageId = (messageId) => {
+  if (messageId.indexOf("m_") === 0) {
+    return messageId.slice(2);
+  }
+  return messageId;
+};

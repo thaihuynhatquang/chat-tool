@@ -22,13 +22,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-if (process.env.NODE_ENV !== "production") {
-  app.use(express.static(path.join(__dirname, "../../web/build")));
-} else app.use(express.static(path.join(__dirname, "../../web/build-server")));
+app.use(express.static(path.join(__dirname, "public")));
 
 app.use(routers);
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../../web/build-server/index.html"));
+  res.sendFile(path.join(__dirname, "public"));
 });
 
 app.use((err, req, res, next) => {

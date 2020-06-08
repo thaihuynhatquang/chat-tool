@@ -436,7 +436,7 @@ router.get(
             }),
           ]),
       db.Thread.findAll({
-        where: { channelId, status },
+        where: { channelId, status: { $ne: THREAD_STATUS_PROCESSING } },
         group: ["status"],
         attributes: ["status", [db.sequelize.fn("COUNT", "status"), "count"]],
       }),
@@ -453,7 +453,6 @@ router.get(
     });
   })
 );
-
 router.post(
   "/:channelId/refresh",
   asyncMiddleware(async (req, res) => {
