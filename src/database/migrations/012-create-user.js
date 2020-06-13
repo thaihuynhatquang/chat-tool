@@ -7,10 +7,10 @@ export default {
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      iamId: {
+      googleId: {
         allowNull: false,
         unique: true,
-        field: "iam_id",
+        field: "google_id",
         type: Sequelize.STRING,
       },
       name: {
@@ -26,10 +26,6 @@ export default {
       },
       dob: {
         type: Sequelize.DATEONLY,
-      },
-      ssoId: {
-        field: "sso_id",
-        type: Sequelize.STRING,
       },
       avatarUrl: {
         field: "avatar_url",

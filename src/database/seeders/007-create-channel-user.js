@@ -1,6 +1,6 @@
 import { flatten } from "utils/common";
-const userIds = [1, 2, 3];
-const channelIds = [1, 2, 3, 4, 5, 6];
+const userIds = [1, 2];
+const channelIds = [1, 2];
 
 const channelUsers = flatten(
   channelIds.map((channelId) => {
@@ -21,7 +21,7 @@ export default {
       "channel_user",
       {
         user_id: {
-          [Sequelize.Op.in]: [1, 2, 3],
+          [Sequelize.Op.in]: [1, 2],
         },
       },
       {}

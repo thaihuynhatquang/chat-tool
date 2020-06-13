@@ -7,6 +7,7 @@ import {
   PERMISSION_UPDATE_USER_ROLE,
   PERMISSION_AUTO_RECEIVE_THREADS,
   PERMISSION_CREATE_TAG,
+  PERMISSION_CREATE_CHANNEL,
 } from "constants";
 
 const permissions = [
@@ -57,6 +58,12 @@ const permissions = [
     name: "Create Tag",
     key: PERMISSION_CREATE_TAG,
     description: "Tạo tag trên channel",
+  },
+  {
+    id: 9,
+    name: "Create Channel",
+    key: PERMISSION_CREATE_CHANNEL,
+    description: "Tạo channel mới",
   },
 ];
 

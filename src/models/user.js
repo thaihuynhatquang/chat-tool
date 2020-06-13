@@ -8,9 +8,9 @@ export default (sequelize, DataTypes) => {
         primaryKey: true,
         type: DataTypes.INTEGER,
       },
-      iamId: {
+      googleId: {
         allowNull: false,
-        field: "iam_id",
+        field: "google_id",
         type: DataTypes.STRING,
       },
       name: {
@@ -26,10 +26,6 @@ export default (sequelize, DataTypes) => {
       },
       dob: {
         type: DataTypes.DATEONLY,
-      },
-      ssoId: {
-        field: "sso_id",
-        type: DataTypes.STRING,
       },
       avatarUrl: {
         field: "avatar_url",

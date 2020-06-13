@@ -61,7 +61,6 @@ export default (sequelize, DataTypes) => {
       through: "ChannelUser",
     });
     models.Channel.hasMany(models.Role);
-    models.Channel.hasOne(models.ToolBot);
   };
 
   Channel.getMissCountsByUserId = async function(userId) {

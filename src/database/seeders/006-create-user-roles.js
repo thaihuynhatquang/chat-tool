@@ -1,7 +1,7 @@
 import { flatten } from "utils/common";
 import { allRoles } from "./003-create-roles";
 
-const userIds = [1, 2, 3];
+const userIds = [1, 2];
 
 const userRoles = flatten(
   userIds.map((userId) => {

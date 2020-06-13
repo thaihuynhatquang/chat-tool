@@ -28,6 +28,7 @@ export const PERMISSION_UPDATE_USER_ROLE = "update-user-role";
 export const PERMISSION_AUTO_RECEIVE_THREADS = "auto-receive-threads";
 export const PERMISSION_CREATE_TAG = "create-tag";
 export const PERMISSION_READ_HIDDEN_MESSAGES = "read-hidden-messages";
+export const PERMISSION_CREATE_CHANNEL = "create-channel";
 
 // Role key
 export const ROLE_STAFF = "staff";
@@ -65,7 +66,6 @@ export const BOT_USER_IAM_ID = 0;
 export const BOT_PAYLOAD_TYPE = "bot";
 
 // Tool
-export const TOOL_STOCK_CHECK_KEY = "tool_stock_check_key";
 export const TOOL_REVIEW_KEY = "tool_review";
 
 export const CRONJOB_NOTE_THREAD_CHANGE_STATUS =

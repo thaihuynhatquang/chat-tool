@@ -26,7 +26,6 @@ import {
   socketsLeaveRoomByUserIds,
   socketsJoinRoomByUserIds,
 } from "utils/socket";
-import { checkAndSendReview } from "utils/review";
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -146,10 +145,6 @@ router.put(
         getRoomName(THREAD_SOCKET_KEY, thread.id)
       );
       await thread.setUsersServing([]);
-      // TODO: Custom review type for each channel
-      if (cause !== "Không có nội dung hỗ trợ" && cause !== "Spam") {
-        checkAndSendReview(thread, req.user);
-      }
     }
 
     // Must update thread status last

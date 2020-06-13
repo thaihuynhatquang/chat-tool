@@ -120,7 +120,6 @@ export default (sequelize, DataTypes) => {
       as: "usersHistory",
       through: "ThreadUsersHistory",
     });
-    models.Thread.hasOne(models.ToolBotThread);
   };
 
   Thread.scopes = function(models) {

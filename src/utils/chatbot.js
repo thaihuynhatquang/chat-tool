@@ -82,7 +82,7 @@ export const updateBotAnswer = (bot, ansId, payload) =>
 
 export const bootBotSendToThread = async (botData, bootbot) => {
   const user = await db.User.findOne({
-    where: { iamId: BOT_USER_IAM_ID },
+    where: { googleId: BOT_USER_IAM_ID },
   });
 
   const resBootBot = await sendToThread(botData, bootbot, user);
@@ -192,7 +192,7 @@ export const getUserBot = async () => {
   if (userBot) return JSON.parse(userBot);
 
   const chatBotUser = await db.User.findOne({
-    where: { iamId: BOT_USER_IAM_ID },
+    where: { googleId: BOT_USER_IAM_ID },
   }).then((user) => (!user ? null : user.toJSON()));
 
   client.set(USER_BOT, JSON.stringify(chatBotUser), "EX", EXPIRED_TIME);

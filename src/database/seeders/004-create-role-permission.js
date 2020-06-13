@@ -12,7 +12,7 @@ const rolePers = flatten(
         permissionIds = [1, 2, 3, 4, 5, 6, 8];
         break;
       case 0:
-        permissionIds = [1, 2, 3, 4, 5, 6];
+        permissionIds = [1, 2, 3, 4, 5, 6, 9];
         break;
       default:
         break;

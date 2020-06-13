@@ -2,7 +2,6 @@ import Bootbot from "bootbot";
 import client from "config/redis";
 import { THREAD_STATUS_DONE, THREAD_STATUS_UNREAD } from "constants";
 import * as calculateInferenceField from "core/triggers/calculateInferenceField";
-import triggerChatbot from "core/triggers/chatbot";
 import triggerCheckCustomerPhone from "core/triggers/customerPhone";
 import FormData from "form-data";
 import fs from "fs";
@@ -19,7 +18,6 @@ import {
   loadMessage,
   sendMessenger,
 } from "utils/graph";
-import { handleConversationResponse } from "utils/review";
 import { formatTime } from "utils/time";
 import InstantMessage from "./interface";
 
@@ -227,10 +225,7 @@ class Messenger extends InstantMessage {
 
   triggerOnHandleMessage = async (message, thread) => {
     triggerCheckCustomerPhone(message, thread);
-    triggerChatbot(message, thread, this.bot);
     !message.hidden && calculateInferenceField.oneLevel(message, thread);
-    !message.isVerified &&
-      handleConversationResponse(this.bot, message, thread);
   };
 
   onEvent = async (event) => {
