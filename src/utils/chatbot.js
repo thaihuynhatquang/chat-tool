@@ -78,7 +78,7 @@ export const getBotReply = async (message, bot) => {
 };
 
 export const updateBotAnswer = (bot, ansId, payload) =>
-  axios.post(`${bot.endpoint}/api/update_msg_id/${ansId}`, payload);
+  client.post(`${bot.endpoint}/api/update_msg_id/${ansId}`, payload);
 
 export const bootBotSendToThread = async (botData, bootbot) => {
   const user = await db.User.findOne({

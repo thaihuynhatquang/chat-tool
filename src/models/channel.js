@@ -135,6 +135,7 @@ export default (sequelize, DataTypes) => {
     });
   };
 
+
   Channel.prototype.isBroadcast = function() {
     return this.configs && this.configs.isBroadcast;
   };

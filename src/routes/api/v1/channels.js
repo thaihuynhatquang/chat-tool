@@ -1,23 +1,24 @@
+import io from "config/socket";
+import {
+  CHANNEL_SOCKET_KEY,
+  PERMISSION_CREATE_INVITE_LINK,
+  PERMISSION_CREATE_TAG,
+  PERMISSION_READ_ALL_THREADS,
+  PERMISSION_REMOVE_USER_FROM_CHANNEL,
+  PERMISSION_UPDATE_CHANNEL,
+  PERMISSION_UPDATE_USER_ROLE,
+  SOCKET_REFRESH_CHANNEL,
+  THREAD_STATUS_PROCESSING,
+} from "constants";
+import startChannels from "core/startChannels";
 import { Router } from "express";
 import _ from "lodash";
 import db from "models";
-import startChannels from "core/startChannels";
-import io from "config/socket";
 import asyncMiddleware from "routes/middlewares/asyncMiddleware";
-import {
-  PERMISSION_READ_ALL_THREADS,
-  PERMISSION_REMOVE_USER_FROM_CHANNEL,
-  PERMISSION_CREATE_TAG,
-  PERMISSION_UPDATE_USER_ROLE,
-  PERMISSION_CREATE_INVITE_LINK,
-  PERMISSION_UPDATE_CHANNEL,
-  THREAD_STATUS_PROCESSING,
-  CHANNEL_SOCKET_KEY,
-  SOCKET_REFRESH_CHANNEL,
-} from "constants";
-import { getRoomName, getOnlineUserIds } from "utils/socket";
+import { can, canAccessChannel } from "routes/middlewares/authorize";
 import { checkUserPermission } from "utils/authorize";
-import { canAccessChannel, can } from "routes/middlewares/authorize";
+import signature from "utils/signature";
+import { getOnlineUserIds, getRoomName } from "utils/socket";
 
 const router = new Router();
 

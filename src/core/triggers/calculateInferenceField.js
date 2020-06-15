@@ -11,7 +11,7 @@ const _calculateMissCountAndTime = async (
   const { isVerified, userId, msgCreatedAt } = formattedMessage;
   const chatBotUser = await getUserBot();
   if (isVerified) {
-    if (userId && userId !== chatBotUser.id) {
+    if (userId) {
       // user is staff then resolve missCount but bot doesn't
       _missCount = 0;
       _missTime = null;

@@ -23,6 +23,7 @@ export const PERMISSION_UPDATE_CHANNEL = "update-channel";
 export const PERMISSION_CREATE_INVITE_LINK = "create-invite-link";
 export const PERMISSION_READ_ALL_THREADS = "read-all-threads";
 export const PERMISSION_SEND_MESSAGE = "send-message";
+export const PERMISSION_ADD_USER_TO_CHANNEL = "add-user-to-channel";
 export const PERMISSION_REMOVE_USER_FROM_CHANNEL = "remove-user-from-channel";
 export const PERMISSION_UPDATE_USER_ROLE = "update-user-role";
 export const PERMISSION_AUTO_RECEIVE_THREADS = "auto-receive-threads";

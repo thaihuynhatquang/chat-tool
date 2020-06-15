@@ -6,13 +6,13 @@ const rolePers = flatten(
     let permissionIds = [];
     switch (role.id % 3) {
       case 1:
-        permissionIds = [4, 7];
+        permissionIds = [4, 8];
         break;
       case 2:
-        permissionIds = [1, 2, 3, 4, 5, 6, 8];
+        permissionIds = [1, 2, 3, 4, 5, 6, 7, 9];
         break;
       case 0:
-        permissionIds = [1, 2, 3, 4, 5, 6, 9];
+        permissionIds = [1, 2, 3, 4, 5, 6, 7, 10];
         break;
       default:
         break;

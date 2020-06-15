@@ -11,7 +11,7 @@ export default {
           phone: "0901791410",
           dob: null,
           avatar_url:
-            "https://platform-lookaside.fbsbx.com/platform/profilepic/?psid=2243000795773537&width=720&ext=1548391184&hash=AeTDp04KvRAd4Wf9",
+            "https://lh3.googleusercontent.com/a-/AOh14Gh4V3KEbQjy2ldO02nEsUCW4QLbsNJx53_QgoWSAg=s96-c",
           department: "COD",
           position: "Lập trình viên",
         },
