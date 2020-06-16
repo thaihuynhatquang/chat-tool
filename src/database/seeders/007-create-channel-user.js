@@ -1,6 +1,6 @@
 import { flatten } from "utils/common";
 const userIds = [1, 2];
-const channelIds = [1, 2];
+const channelIds = [1, 2, 3];
 
 const channelUsers = flatten(
   channelIds.map((channelId) => {
