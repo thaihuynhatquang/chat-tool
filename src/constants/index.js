@@ -46,7 +46,7 @@ export const MAX_LIMIT = 100;
 export const DEFAULT_LIMIT = 50;
 
 export const EXPIRED_TIME = 3600;
-export const GRAPH_FB_URL = "https://graph.facebook.com/v3.2";
+export const GRAPH_FB_URL = "https://graph.facebook.com";
 export const FBCOMMENT_CHANNEL_TYPE = "fbcomment";
 export const MESSENGER_CHANNEL_TYPE = "messenger";
 export const MAX_ASSIGN_THREADS_PER_USER = 50;

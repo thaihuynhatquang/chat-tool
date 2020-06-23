@@ -10,10 +10,10 @@ export default {
       configs: {
         isBroadcast: false,
         assignMode: THREAD_ASSIGN_MODE_AUTO,
-        appId: "579120855973917",
-        appSecret: "bbda68df38dd3652fd23bd52fd7c1080",
+        appId: "914346135669523",
+        appSecret: "171756d36b41cabddf926301c82aaa80",
         accessToken:
-          "EAAIOtRTnAB0BALACQGTElFQtNebK6ZAwPkHNj6yziXXGay54AC6MZBzIZAZBIZAZB5R3Iz4Gfo1VC9wnA3ZAnZCvOHmhm1VTwad8kZAYZC64Rvi5KopBUYMBU9eBW0SAaulrPhHuzVdyE3bhCBVZCHGHMdOr9qEkf2Jw9sxWTljeiZBSeYU5tbjLkmXZC",
+          "EAAMZCl8yeSxMBAK9WQZALnaK1860ZBuxvUUIxeo4gdQm6JHZA131g6OPRtZAn2qnGqMTUUdkDRRze8pyrJmY5oHOg3ZBh8p1Dna6ZCHdiuOHrJMZAM18wc0ZClYDxP8xEXqt1ApTFs71GmpJL0AUW7UvBYURZBsoadd6ZBcWpDH5ESvsfDvstjPGQyE",
         verifyToken: "thnq",
       },
       addition_data: {
@@ -33,10 +33,10 @@ export default {
       configs: {
         isBroadcast: false,
         assignMode: THREAD_ASSIGN_MODE_AUTO,
-        appId: "579120855973917",
-        appSecret: "bbda68df38dd3652fd23bd52fd7c1080",
+        appId: "914346135669523",
+        appSecret: "171756d36b41cabddf926301c82aaa80",
         accessToken:
-          "EAAIOtRTnAB0BALACQGTElFQtNebK6ZAwPkHNj6yziXXGay54AC6MZBzIZAZBIZAZB5R3Iz4Gfo1VC9wnA3ZAnZCvOHmhm1VTwad8kZAYZC64Rvi5KopBUYMBU9eBW0SAaulrPhHuzVdyE3bhCBVZCHGHMdOr9qEkf2Jw9sxWTljeiZBSeYU5tbjLkmXZC",
+          "EAAMZCl8yeSxMBAK9WQZALnaK1860ZBuxvUUIxeo4gdQm6JHZA131g6OPRtZAn2qnGqMTUUdkDRRze8pyrJmY5oHOg3ZBh8p1Dna6ZCHdiuOHrJMZAM18wc0ZClYDxP8xEXqt1ApTFs71GmpJL0AUW7UvBYURZBsoadd6ZBcWpDH5ESvsfDvstjPGQyE",
         verifyToken: "thnq",
       },
       addition_data: {
@@ -56,10 +56,10 @@ export default {
       configs: {
         isBroadcast: false,
         assignMode: THREAD_ASSIGN_MODE_AUTO,
-        appId: "579120855973917",
-        appSecret: "bbda68df38dd3652fd23bd52fd7c1080",
+        appId: "914346135669523",
+        appSecret: "171756d36b41cabddf926301c82aaa80",
         accessToken:
-          "EAAIOtRTnAB0BACj2owUP51XORrw5Eg20SJlBRnRGlZCbOEFhZAqawKEmR2MGwRWf0TcGNiLbHoUtdpZCk9LPa35ZBYf536iHRyikpFz870XVFNH64R62Tv5JJ73RbHpwoKYwZCBLcMt8Ya3nJTssamtDTmbvvcR6rvVu8VR3U2gZDZD",
+          "EAAMZCl8yeSxMBADMT2BIhZAxLiSF84HFxqlf5LCBy5elmYgERvxxlNjNieXZBZAbdVDqehbGU3aJhKckJZBGFHEfW1IemSRaJ9I836K3ZCBCqZC0tmr8WBPoNZC5uiyPtWZAIRFGTuzH5rumX3ISuEAJutEZA6gZAuoGcHZChHZBIkY8Ox87xWX4GTPKV",
         verifyToken: "thnq",
       },
       addition_data: {
