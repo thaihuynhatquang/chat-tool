@@ -3,10 +3,13 @@ LABEL maintainer='thaihuynhatquang@gmail.com'
 
 WORKDIR /app
 
-RUN apk update && \
-  apk upgrade && \
-  apk add bash && \
-  npm install yarn -g && \
+# To handle 'not get uid/gid'
+RUN npm config set unsafe-perm true
+
+RUN apk update &&
+  apk upgrade &&
+  apk add bash &&
+  npm install yarn -g &&
   npm install pm2 -g
 
 RUN yarn --cwd /app

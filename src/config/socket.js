@@ -26,13 +26,8 @@ io.adapter(redisAdapter({ host: process.env.REDIS_HOST || "localhost" }));
 io.use((socket, next) => {
   const promise = new Promise(async (resolve, reject) => {
     try {
-      const { cookie: cookieString } = socket.handshake.headers;
+      const { accessToken } = socket.handshake.query;
 
-      if (!cookieString) throw new Error("No cookie transmitted");
-
-      const cookie = getCookieFromString(cookieString);
-
-      const { access_token: accessToken } = cookie;
       if (!accessToken) throw Error("No access token transmitted");
 
       socket.accessToken = accessToken;
